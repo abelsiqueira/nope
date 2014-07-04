@@ -21,7 +21,10 @@ typedef struct _preprocessor {
   int nvar, ncon, nfix;
   // Data
   int *fixed_index;
-  double *fixed_vector;
+  int *not_fixed_index;
+  _Bool *is_fixed;
+  double *x, *g;
+  double *workspace1, *workspace2;
 } Preprocessor;
 
 // {Cons,Des}tructor
@@ -34,7 +37,10 @@ void setConFuncs (Preprocessor *, pcsetup, pcfn, pcofg, pchprod, pccfsg);
 void runUncSetup (Preprocessor *, int *, double *, double *, double *);
 void runConSetup (Preprocessor *, int *, double *, double *, double *,
     int *, double *, double *, double *, _Bool *, _Bool *);
-void findFixedVariable (Preprocessor *, int, double *, double *, double *);
+void findFixedVariables (Preprocessor *, int, double *, double *, double *);
+
+// Debug Functions
+void printJacobian (int, int, int, double *, int *, int *);
 
 // Run the processor
 int process (Preprocessor *);

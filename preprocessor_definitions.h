@@ -9,6 +9,8 @@
 #define STATUS_OK 0
 #define STATUS_ERROR 1
 
+#define PPEPS 1e-12
+
 // Unconstrained
 typedef void (*pusetup) (int *, int *, int *, int *, int *, double *, double *,
                          double *);
