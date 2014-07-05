@@ -7,7 +7,8 @@
 
 #define STATUS_UNINITIALIZED -1
 #define STATUS_OK 0
-#define STATUS_ERROR 1
+#define STATUS_READY 1
+#define STATUS_ERROR 10
 
 #define PPEPS 1e-12
 
@@ -18,6 +19,7 @@ typedef void (*pufn)    (int *, int *, double *, double *);
 typedef void (*puofg)   (int *, int *, double *, double *, double *, _Bool *);
 typedef void (*puhprod) (int *, int *, _Bool *, double *, double *, double *);
 // Constrained
+typedef void (*pcdimen) (int *, int *, int *, int *);
 typedef void (*pcsetup) (int *, int *, int *, int *, int *, int *, double *,
                          double *, double *, double *, double *, double *, _Bool *, _Bool *,
                          int *, int *, int *);

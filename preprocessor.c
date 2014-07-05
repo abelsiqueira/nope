@@ -4,6 +4,7 @@
 
 Preprocessor * initializePreprocessor () {
   Preprocessor * prep = (Preprocessor *) malloc (sizeof(Preprocessor));
+
   prep->origin_usetup = 0;
   prep->origin_csetup = 0;
   prep->origin_ufn = 0;
@@ -24,93 +25,132 @@ void destroyPreprocessor (Preprocessor *prep) {
     free(prep);
 }
 
-void setUncFuncs (Preprocessor *prep, pusetup usetup, pufn ufn, puofg uofg,
-    puhprod uhprod) {
+void setFuncs (Preprocessor *prep, pcdimen cdimen, pusetup usetup,
+    pufn ufn, puofg uofg, puhprod uhprod, pcsetup csetup, pcfn cfn,
+    pcofg cofg, pchprod chprod, pccfsg ccfsg) {
+  prep->origin_cdimen = cdimen;
   prep->origin_usetup = usetup;
   prep->origin_ufn = ufn;
   prep->origin_uofg = uofg;
   prep->origin_uhprod = uhprod;
-  prep->status = STATUS_OK;
-  prep->constrained = 0;
-}
-
-void setConFuncs (Preprocessor *prep, pcsetup csetup, pcfn cfn, pcofg cofg,
-    pchprod chprod, pccfsg ccfsg) {
   prep->origin_csetup = csetup;
   prep->origin_cfn = cfn;
   prep->origin_cofg = cofg;
   prep->origin_chprod = chprod;
   prep->origin_ccfsg = ccfsg;
-  prep->status = STATUS_OK;
-  prep->constrained = 1;
+
+  prep->status = STATUS_READY;
 }
 
-int process (Preprocessor *prep) {
-  if (prep == 0 || prep->status != STATUS_OK) {
+int runPreprocessor (Preprocessor *prep) {
+  int status = 0;
+  int funit = 42, fout = 6, io_buffer = 11;
+  int efirst = 0, lfirst = 0, nvfirst = 0;
+
+  if (prep == 0 || prep->status != STATUS_READY) {
     return 1;
   }
+
+  (*prep->origin_cdimen)(&status, &funit, &prep->nvar, &prep->ncon);
+
+  prep->nfix = 0;
+  prep->ntrivial = 0;
+  prep->fixed_index = (int *) malloc(prep->nvar*sizeof(int));
+  prep->not_fixed_index = (int *) malloc(prep->nvar*sizeof(int));
+  prep->is_fixed = (_Bool *) malloc(prep->nvar*sizeof(_Bool));
+  prep->trivial_index = (int *) malloc(prep->ncon*sizeof(int));
+  prep->not_trivial_index = (int *) malloc(prep->ncon*sizeof(int));
+  prep->is_trivial = (_Bool *) malloc(prep->ncon*sizeof(_Bool));
+  prep->x = (double *) malloc(prep->nvar*sizeof(double));
+  prep->g = (double *) malloc(prep->nvar*sizeof(double));
+  prep->bl = (double *) malloc(prep->nvar*sizeof(double));
+  prep->bu = (double *) malloc(prep->nvar*sizeof(double));
+  if (prep->ncon > 0) {
+    prep->y = (double *) malloc(prep->ncon*sizeof(double));
+    prep->cl = (double *) malloc(prep->ncon*sizeof(double));
+    prep->cu = (double *) malloc(prep->ncon*sizeof(double));
+    prep->equatn = (_Bool *) malloc(prep->ncon*sizeof(_Bool));
+    prep->linear = (_Bool *) malloc(prep->ncon*sizeof(_Bool));
+  }
+  prep->workspace1 = (double *) malloc(prep->nvar*sizeof(double));
+  prep->workspace2 = (double *) malloc(prep->nvar*sizeof(double));
+
+  if (prep->ncon == 0) {
+    (prep->origin_usetup)(&status, &funit, &fout, &io_buffer,
+        &prep->nvar, prep->x, prep->bl, prep->bu);
+  } else {
+    (prep->origin_csetup)(&status, &funit, &fout, &io_buffer,
+        &prep->nvar, &prep->ncon, prep->x, prep->bl, prep->bu,
+        prep->y, prep->cl, prep->cu, prep->equatn, prep->linear,
+        &efirst, &lfirst, &nvfirst);
+  }
+
+  findFixedVariables(prep);
+  findTrivialConstraints(prep);
+
+  prep->status = STATUS_OK;
   return 0;
 }
 
 void runUncSetup (Preprocessor *prep, int *nvar, double *x, double
     *bl, double *bu) {
-  int status = 0;
-  int funit = 42, fout = 6, io_buffer = 11;
-
-  (prep->origin_usetup)(&status, &funit, &fout, &io_buffer, nvar, x, bl, bu);
-  prep->nvar = *nvar;
-  prep->ncon = 0;
-  findFixedVariables(prep, *nvar, x, bl, bu);
-  *nvar = *nvar - prep->nfix;
+  int i;
+  for (i = 0; i < *nvar; i++) {
+    x[i] = prep->x[prep->not_fixed_index[i]];
+    bl[i] = prep->bl[prep->not_fixed_index[i]];
+    bu[i] = prep->bu[prep->not_fixed_index[i]];
+  }
 }
 
-void runConSetup (Preprocessor *prep, int *nvar, double *x, double *bl,
-    double *bu, int *ncon, double *y, double *cl, double *cu,
+void runConSetup (Preprocessor *prep, int *nvar, double *x, double
+    *bl, double *bu, int *ncon, double *y, double *cl, double *cu,
     _Bool *equatn, _Bool *linear) {
-  int status = 0;
-  int funit = 42, fout = 6, io_buffer = 11;
-  int efirst = 0, lfirst = 0, nvfirst = 0;
+  int i, j;
 
-  (prep->origin_csetup)(&status, &funit, &fout, &io_buffer, nvar, ncon,
-      x, bl, bu, y, cl, cu, equatn, linear, &efirst, &lfirst,
-      &nvfirst);
-  prep->nvar = *nvar;
-  prep->ncon = *ncon;
-  findFixedVariables(prep, *nvar, x, bl, bu);
-  *nvar = *nvar - prep->nfix;
+  for (i = 0; i < *nvar; i++) {
+    j = prep->not_fixed_index[i];
+    x[i] = prep->x[j];
+    bl[i] = prep->bl[j];
+    bu[i] = prep->bu[j];
+  }
+  for (i = 0; i < *ncon; i++) {
+    j = prep->not_fixed_index[i];
+    y[i] = prep->y[j];
+    cl[i] = prep->cl[j];
+    cu[i] = prep->cu[j];
+    equatn[i] = prep->equatn[j];
+    linear[i] = prep->linear[j];
+  }
 }
 
-void findFixedVariables (Preprocessor *prep, int nvar, double *x,
-    double *bl, double *bu) {
+void findFixedVariables (Preprocessor *prep) {
   int i, kfixed = 0, knotfixed = 0;
-
-  prep->nfix = 0;
-  prep->fixed_index = (int *) malloc(nvar*sizeof(int));
-  prep->not_fixed_index = (int *) malloc(nvar*sizeof(int));
-  prep->is_fixed = (_Bool *) malloc(nvar*sizeof(_Bool));
-  prep->x = (double *) malloc(nvar*sizeof(double));
-  prep->g = (double *) malloc(nvar*sizeof(double));
-  prep->workspace1 = (double *) malloc(nvar*sizeof(double));
-  prep->workspace2 = (double *) malloc(nvar*sizeof(double));
-
-  for (i = 0; i < nvar; i++) {
-    if (bu[i] - bl[i] < PPEPS) {
+  for (i = 0; i < prep->nvar; i++) {
+    if (prep->bu[i] - prep->bl[i] < PPEPS) {
       prep->is_fixed[i] = 1;
-      prep->x[i] = (bl[i]+bu[i])/2;
+      prep->x[i] = (prep->bl[i] + prep->bu[i])/2;
       prep->nfix++;
       prep->fixed_index[kfixed++] = i;
     } else {
       prep->is_fixed[i] = 0;
-      prep->x[i] = x[i];
       prep->not_fixed_index[knotfixed++] = i;
     }
   }
+}
 
-  for (i = 0; i < nvar - prep->nfix; i++) {
-    x[i] = prep->x[prep->not_fixed_index[i]];
-    bl[i] = bl[prep->not_fixed_index[i]];
-    bu[i] = bu[prep->not_fixed_index[i]];
+void findTrivialConstraints (Preprocessor *prep) {
+  int i, knottrivial = 0;
+  for (i = 0; i < prep->ncon; i++) {
+    prep->is_trivial = 0;
+    prep->not_trivial_index[knottrivial++] = i;
   }
+}
+
+void ppDIMEN (Preprocessor *prep, int *nvar, int *ncon) {
+  if (prep == 0 || prep->status != STATUS_OK)
+    return;
+  *nvar = prep->nvar - prep->nfix;
+  *ncon = prep->ncon - prep->ntrivial;
 }
 
 void ppUFN (Preprocessor *prep, int * status, int * n, double * x, double * f) {
@@ -182,7 +222,7 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
     prep->x[prep->not_fixed_index[i]] = x[i];
   (*prep->origin_ccfsg)(status, &prep->nvar, m, prep->x, c, nnzj, lj, Jval,
       Jvar, Jfun, grad);
-  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);
+/*  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);*/
   // First the fixed variables are removed. This leaves some empty
   // columns
   for (k = 0; k < *nnzj; k++) {
@@ -194,7 +234,7 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
       k--;
     }
   }
-  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);
+/*  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);*/
   // Now we reorder the columns, reducing by one for each fixed
   // variable before that column
   for (i = prep->nfix-1; i >= 0; i--) {
@@ -204,7 +244,7 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
       }
     }
   }
-  printJacobian (prep->ncon, *n, *nnzj, Jval, Jvar, Jfun);
+/*  printJacobian (prep->ncon, *n, *nnzj, Jval, Jvar, Jfun);*/
 }
 
 void printJacobian (int ncon, int nvar, int nnzj, double *Jval, int *Jvar,

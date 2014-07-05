@@ -11,6 +11,7 @@ typedef struct _preprocessor {
   pufn    origin_ufn;
   puofg   origin_uofg;
   puhprod origin_uhprod;
+  pcdimen origin_cdimen;
   pcfn    origin_cfn;
   pcofg   origin_cofg;
   pchprod origin_chprod;
@@ -18,12 +19,14 @@ typedef struct _preprocessor {
   // Information
   int status;
   _Bool constrained;
-  int nvar, ncon, nfix;
+  int nvar, ncon, nfix, ntrivial;
   // Data
-  int *fixed_index;
-  int *not_fixed_index;
-  _Bool *is_fixed;
-  double *x, *g;
+  int *fixed_index, *trivial_index;
+  int *not_fixed_index, *not_trivial_index;
+  _Bool *is_fixed, *is_trivial;
+  double *x, *g, *bl, *bu;
+  double *y, *cl, *cu;
+  _Bool *equatn, *linear;
   double *workspace1, *workspace2;
 } Preprocessor;
 
@@ -32,20 +35,25 @@ Preprocessor * initializePreprocessor ();
 void destroyPreprocessor (Preprocessor *);
 
 // Setup functions
-void setUncFuncs (Preprocessor *, pusetup, pufn, puofg, puhprod);
-void setConFuncs (Preprocessor *, pcsetup, pcfn, pcofg, pchprod, pccfsg);
+void setFuncs (Preprocessor *, pcdimen, pusetup, pufn, puofg, puhprod,
+    pcsetup, pcfn, pcofg, pchprod, pccfsg);
 void runUncSetup (Preprocessor *, int *, double *, double *, double *);
 void runConSetup (Preprocessor *, int *, double *, double *, double *,
     int *, double *, double *, double *, _Bool *, _Bool *);
-void findFixedVariables (Preprocessor *, int, double *, double *, double *);
 
 // Debug Functions
 void printJacobian (int, int, int, double *, int *, int *);
 
 // Run the processor
-int process (Preprocessor *);
+int runPreprocessor (Preprocessor *);
+void findFixedVariables (Preprocessor *);
+void findTrivialConstraints (Preprocessor *);
 
 // Interface functions
+void ppDIMEN (Preprocessor *prep,
+              int * nvar,
+              int * ncon);
+
 void ppUFN (Preprocessor *prep,
             int * status,  // (out) Output status
             int * n,       // (in)  Number of variables
