@@ -12,6 +12,7 @@ typedef struct _preprocessor {
   puofg   origin_uofg;
   puhprod origin_uhprod;
   pcdimen origin_cdimen;
+  pcdimsj origin_cdimsj;
   pcfn    origin_cfn;
   pcofg   origin_cofg;
   pchprod origin_chprod;
@@ -19,13 +20,16 @@ typedef struct _preprocessor {
   // Information
   int status;
   _Bool constrained;
-  int nvar, ncon, nfix, ntrivial;
+  int nvar, ncon, nfix, ntrivial, jmax;
   // Data
   int *fixed_index, *trivial_index;
   int *not_fixed_index, *not_trivial_index;
+  int nnzj;
   _Bool *is_fixed, *is_trivial;
   double *x, *g, *bl, *bu;
-  double *y, *cl, *cu;
+  double *c, *y, *cl, *cu;
+  double *Jval;
+  int *Jvar, *Jfun;
   _Bool *equatn, *linear;
   double *workspace1, *workspace2;
 } Preprocessor;
@@ -36,10 +40,10 @@ void destroyPreprocessor (Preprocessor *);
 
 // Setup functions
 void setFuncs (Preprocessor *, pcdimen, pusetup, pufn, puofg, puhprod,
-    pcsetup, pcfn, pcofg, pchprod, pccfsg);
+    pcsetup, pcfn, pcofg, pchprod, pccfsg, pcdimsj);
 void runUncSetup (Preprocessor *, int *, double *, double *, double *);
 void runConSetup (Preprocessor *, int *, double *, double *, double *,
-    int *, double *, double *, double *, _Bool *, _Bool *);
+    int *, double *, double *, double *, _Bool *, _Bool *, int *);
 
 // Debug Functions
 void printJacobian (int, int, int, double *, int *, int *);

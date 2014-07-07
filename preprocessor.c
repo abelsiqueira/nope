@@ -10,6 +10,8 @@ Preprocessor * initializePreprocessor () {
   prep->origin_ufn = 0;
   prep->origin_uofg = 0;
   prep->origin_uhprod = 0;
+  prep->origin_cdimen = 0;
+  prep->origin_cdimsj = 0;
   prep->origin_cfn = 0;
   prep->origin_cofg = 0;
   prep->origin_chprod = 0;
@@ -27,7 +29,7 @@ void destroyPreprocessor (Preprocessor *prep) {
 
 void setFuncs (Preprocessor *prep, pcdimen cdimen, pusetup usetup,
     pufn ufn, puofg uofg, puhprod uhprod, pcsetup csetup, pcfn cfn,
-    pcofg cofg, pchprod chprod, pccfsg ccfsg) {
+    pcofg cofg, pchprod chprod, pccfsg ccfsg, pcdimsj cdimsj) {
   prep->origin_cdimen = cdimen;
   prep->origin_usetup = usetup;
   prep->origin_ufn = ufn;
@@ -38,6 +40,7 @@ void setFuncs (Preprocessor *prep, pcdimen cdimen, pusetup usetup,
   prep->origin_cofg = cofg;
   prep->origin_chprod = chprod;
   prep->origin_ccfsg = ccfsg;
+  prep->origin_cdimsj = cdimsj;
 
   prep->status = STATUS_READY;
 }
@@ -46,6 +49,9 @@ int runPreprocessor (Preprocessor *prep) {
   int status = 0;
   int funit = 42, fout = 6, io_buffer = 11;
   int efirst = 0, lfirst = 0, nvfirst = 0;
+  _Bool grad = true;
+  int i;
+  int knotfixed = 0, knottrivial = 0;
 
   if (prep == 0 || prep->status != STATUS_READY) {
     return 1;
@@ -66,6 +72,7 @@ int runPreprocessor (Preprocessor *prep) {
   prep->bl = (double *) malloc(prep->nvar*sizeof(double));
   prep->bu = (double *) malloc(prep->nvar*sizeof(double));
   if (prep->ncon > 0) {
+    prep->c = (double *) malloc(prep->ncon*sizeof(double));
     prep->y = (double *) malloc(prep->ncon*sizeof(double));
     prep->cl = (double *) malloc(prep->ncon*sizeof(double));
     prep->cu = (double *) malloc(prep->ncon*sizeof(double));
@@ -85,8 +92,41 @@ int runPreprocessor (Preprocessor *prep) {
         &efirst, &lfirst, &nvfirst);
   }
 
+  if (prep->ncon > 0)
+    (*prep->origin_cdimsj)(&status, &prep->jmax);
+  else
+    prep->jmax = 0;
+  if (prep->ncon > 0) {
+    prep->Jval = (double *) malloc(prep->jmax*sizeof(double));
+    prep->Jvar = (int *) malloc(prep->jmax*sizeof(int));
+    prep->Jfun = (int *) malloc(prep->jmax*sizeof(int));
+  }
+
+  (*prep->origin_ccfsg)(&status, &prep->nvar, &prep->ncon,
+      prep->x, prep->y, &prep->nnzj, &prep->jmax, prep->Jval,
+      prep->Jvar, prep->Jfun, &grad);
+  printJacobian (prep->ncon, prep->nvar, prep->nnzj, prep->Jval,
+      prep->Jvar, prep->Jfun);
   findFixedVariables(prep);
+  printJacobian (prep->ncon, prep->nvar, prep->nnzj, prep->Jval,
+      prep->Jvar, prep->Jfun);
   findTrivialConstraints(prep);
+  printJacobian (prep->ncon, prep->nvar, prep->nnzj, prep->Jval,
+      prep->Jvar, prep->Jfun);
+
+  for (i = 0; i < prep->nvar; i++) {
+    if (prep->is_fixed[i])
+      prep->fixed_index[prep->nfix++] = i;
+    else
+      prep->not_fixed_index[knotfixed++] = i;
+  }
+
+  for (i = 0; i < prep->ncon; i++) {
+    if (prep->is_trivial[i])
+      prep->trivial_index[prep->ntrivial++] = i;
+    else
+      prep->not_trivial_index[knottrivial++] = i;
+  }
 
   prep->status = STATUS_OK;
   return 0;
@@ -104,7 +144,7 @@ void runUncSetup (Preprocessor *prep, int *nvar, double *x, double
 
 void runConSetup (Preprocessor *prep, int *nvar, double *x, double
     *bl, double *bu, int *ncon, double *y, double *cl, double *cu,
-    _Bool *equatn, _Bool *linear) {
+    _Bool *equatn, _Bool *linear, int *jmax) {
   int i, j;
 
   for (i = 0; i < *nvar; i++) {
@@ -121,131 +161,65 @@ void runConSetup (Preprocessor *prep, int *nvar, double *x, double
     equatn[i] = prep->equatn[j];
     linear[i] = prep->linear[j];
   }
+  *jmax = prep->jmax;
 }
 
 void findFixedVariables (Preprocessor *prep) {
-  int i, kfixed = 0, knotfixed = 0;
+  int i;
   for (i = 0; i < prep->nvar; i++) {
     if (prep->bu[i] - prep->bl[i] < PPEPS) {
       prep->is_fixed[i] = 1;
       prep->x[i] = (prep->bl[i] + prep->bu[i])/2;
-      prep->nfix++;
-      prep->fixed_index[kfixed++] = i;
     } else {
       prep->is_fixed[i] = 0;
-      prep->not_fixed_index[knotfixed++] = i;
+    }
+  }
+
+  for (i = 0; i < prep->nnzj; i++) {
+    if (prep->is_fixed[prep->Jvar[i]-1]) {
+      if (prep->linear[prep->Jfun[i]-1]) {
+        prep->c[prep->Jfun[i]-1] -= prep->Jval[i];
+      }
+      prep->Jval[i] = prep->Jval[prep->nnzj-1];
+      prep->Jvar[i] = prep->Jvar[prep->nnzj-1];
+      prep->Jfun[i] = prep->Jfun[prep->nnzj-1];
+      prep->nnzj--;
+      i--;
     }
   }
 }
 
 void findTrivialConstraints (Preprocessor *prep) {
-  int i, knottrivial = 0;
-  for (i = 0; i < prep->ncon; i++) {
-    prep->is_trivial = 0;
-    prep->not_trivial_index[knottrivial++] = i;
+  int i, j;
+  int nnzj = prep->nnzj;
+  int ncon = prep->ncon - prep->ntrivial;
+  int nnzj_per_line[ncon];
+  int index_of_nnzj[ncon];
+
+  for (i = 0; i < ncon; i++) {
+    nnzj_per_line[i] = 0;
+    index_of_nnzj[i] = -1;
   }
-}
-
-void ppDIMEN (Preprocessor *prep, int *nvar, int *ncon) {
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  *nvar = prep->nvar - prep->nfix;
-  *ncon = prep->ncon - prep->ntrivial;
-}
-
-void ppUFN (Preprocessor *prep, int * status, int * n, double * x, double * f) {
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  (*prep->origin_ufn)(status, n, x, f);
-}
-
-void ppUOFG (Preprocessor *prep, int * status, int * n, double * x, double *
-    f, double * g, _Bool * grad) {
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  (*prep->origin_uofg)(status, n, x, f, g, grad);
-}
-
-void ppUHPROD (Preprocessor *prep, int * status, int * n, _Bool * goth,
-    double * x, double * vector, double * result) {
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  (*prep->origin_uhprod)(status, n, goth, x, vector, result);
-}
-
-void ppCFN (Preprocessor *prep, int * status, int * n, int * m, double * x,
-    double * f, double * c) {
-  int i = 0;
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  for (i = 0; i < *n; i++)
-    prep->x[prep->not_fixed_index[i]] = x[i];
-  (*prep->origin_cfn)(status, &prep->nvar, m, prep->x, f, c);
-}
-
-void ppCOFG (Preprocessor *prep, int * status, int * n, double * x, double *
-    f, double * g, _Bool * grad) {
-  int i = 0;
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  for (i = 0; i < *n; i++)
-    prep->x[prep->not_fixed_index[i]] = x[i];
-  (*prep->origin_cofg)(status, &prep->nvar, prep->x, f, prep->g, grad);
-  for (i = 0; i < *n; i++)
-    g[i] = prep->g[prep->not_fixed_index[i]];
-}
-
-void ppCHPROD (Preprocessor *prep, int * status, int * n, int * m, _Bool *
-    goth, double * x, double * y, double * vector, double * result) {
-  int i = 0;
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  for (i = 0; i < prep->nvar; i++)
-    prep->workspace1[i] = 0.0;
-  for (i = 0; i < *n; i++) {
-    prep->x[prep->not_fixed_index[i]] = x[i];
-    prep->workspace1[prep->not_fixed_index[i]] = vector[i];
+  for (i = 0; i < nnzj; i++) {
+    nnzj_per_line[prep->Jfun[i]-1]++;
+    index_of_nnzj[prep->Jfun[i]-1] = i;
   }
-  (*prep->origin_chprod)(status, &prep->nvar, m, goth, prep->x, y,
-      prep->workspace1, prep->workspace2);
-  for (i = 0; i < *n; i++)
-    result[i] = prep->workspace2[prep->not_fixed_index[i]];
-}
 
-void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
-    double * x, double * c, int * nnzj, int * lj, double * Jval, int *
-    Jvar, int * Jfun, _Bool * grad) {
-  int i, k;
-  if (prep == 0 || prep->status != STATUS_OK)
-    return;
-  for (i = 0; i < *n; i++)
-    prep->x[prep->not_fixed_index[i]] = x[i];
-  (*prep->origin_ccfsg)(status, &prep->nvar, m, prep->x, c, nnzj, lj, Jval,
-      Jvar, Jfun, grad);
-/*  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);*/
-  // First the fixed variables are removed. This leaves some empty
-  // columns
-  for (k = 0; k < *nnzj; k++) {
-    if (prep->is_fixed[Jvar[k]-1]) {
-      Jval[k] = Jval[*nnzj-1];
-      Jvar[k] = Jvar[*nnzj-1];
-      Jfun[k] = Jfun[*nnzj-1];
-      (*nnzj)--;
-      k--;
-    }
-  }
-/*  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);*/
-  // Now we reorder the columns, reducing by one for each fixed
-  // variable before that column
-  for (i = prep->nfix-1; i >= 0; i--) {
-    for (k = 0; k < *nnzj; k++) {
-      if (Jvar[k]-1 > prep->fixed_index[i]) {
-        Jvar[k]--;
+  for (i = 0; i < ncon; i++) {
+    if (prep->linear[prep->not_trivial_index[i]]) {
+      if (nnzj_per_line[i] == 0)
+        prep->is_trivial[i] = true;
+      else if (nnzj_per_line[i] == 1) {
+        prep->is_trivial[i] = true;
+        j = index_of_nnzj[i];
+        prep->x[prep->Jvar[j]-1] = prep->c[prep->Jfun[j]-1]/prep->Jval[j];
+        prep->is_fixed[i] = true;
       }
     }
   }
-/*  printJacobian (prep->ncon, *n, *nnzj, Jval, Jvar, Jfun);*/
+
 }
+
 
 void printJacobian (int ncon, int nvar, int nnzj, double *Jval, int *Jvar,
     int *Jfun) {

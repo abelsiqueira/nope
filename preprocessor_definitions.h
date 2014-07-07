@@ -20,6 +20,7 @@ typedef void (*puofg)   (int *, int *, double *, double *, double *, _Bool *);
 typedef void (*puhprod) (int *, int *, _Bool *, double *, double *, double *);
 // Constrained
 typedef void (*pcdimen) (int *, int *, int *, int *);
+typedef void (*pcdimsj) (int *, int *);
 typedef void (*pcsetup) (int *, int *, int *, int *, int *, int *, double *,
                          double *, double *, double *, double *, double *, _Bool *, _Bool *,
                          int *, int *, int *);
