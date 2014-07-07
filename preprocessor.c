@@ -50,7 +50,7 @@ int runPreprocessor (Preprocessor *prep) {
   int funit = 42, fout = 6, io_buffer = 11;
   int efirst = 0, lfirst = 0, nvfirst = 0;
   _Bool grad = true;
-  int i;
+  int i, j;
   int knotfixed = 0, knottrivial = 0;
 
   if (prep == 0 || prep->status != STATUS_READY) {
@@ -76,6 +76,8 @@ int runPreprocessor (Preprocessor *prep) {
     prep->y = (double *) malloc(prep->ncon*sizeof(double));
     prep->cl = (double *) malloc(prep->ncon*sizeof(double));
     prep->cu = (double *) malloc(prep->ncon*sizeof(double));
+    prep->linbndl = (double *) malloc(prep->ncon*sizeof(double));
+    prep->linbndu = (double *) malloc(prep->ncon*sizeof(double));
     prep->equatn = (_Bool *) malloc(prep->ncon*sizeof(_Bool));
     prep->linear = (_Bool *) malloc(prep->ncon*sizeof(_Bool));
   }
@@ -103,16 +105,32 @@ int runPreprocessor (Preprocessor *prep) {
   }
 
   (*prep->origin_ccfsg)(&status, &prep->nvar, &prep->ncon,
-      prep->x, prep->y, &prep->nnzj, &prep->jmax, prep->Jval,
+      prep->x, prep->c, &prep->nnzj, &prep->jmax, prep->Jval,
       prep->Jvar, prep->Jfun, &grad);
+  for (i = 0; i < prep->ncon; i++) {
+    prep->linbndl[i] = prep->cl[i] - prep->c[i];
+    prep->linbndu[i] = prep->cu[i] - prep->c[i];
+  }
+  for (i = 0; i < prep->nnzj; i++) {
+    j = prep->Jfun[i]-1;
+    if (prep->linear[j]) {
+      prep->linbndl[j] += prep->Jval[i]*prep->x[prep->Jvar[i]-1];
+      prep->linbndu[j] += prep->Jval[i]*prep->x[prep->Jvar[i]-1];
+    }
+  }
   printJacobian (prep->ncon, prep->nvar, prep->nnzj, prep->Jval,
       prep->Jvar, prep->Jfun);
-  findFixedVariables(prep);
+
+  prep->status = STATUS_PROCESSING;
+/*  while (prep->status == STATUS_PROCESSING) {*/
+    prep->status = STATUS_PROCESSED;
+    findFixedVariables(prep);
   printJacobian (prep->ncon, prep->nvar, prep->nnzj, prep->Jval,
       prep->Jvar, prep->Jfun);
-  findTrivialConstraints(prep);
+    findTrivialConstraints(prep);
   printJacobian (prep->ncon, prep->nvar, prep->nnzj, prep->Jval,
       prep->Jvar, prep->Jfun);
+/*  }*/
 
   for (i = 0; i < prep->nvar; i++) {
     if (prep->is_fixed[i])
@@ -122,9 +140,10 @@ int runPreprocessor (Preprocessor *prep) {
   }
 
   for (i = 0; i < prep->ncon; i++) {
-    if (prep->is_trivial[i])
+    if (prep->is_trivial[i]) {
       prep->trivial_index[prep->ntrivial++] = i;
-    else
+      prep->y[i] = 0;
+    } else
       prep->not_trivial_index[knottrivial++] = i;
   }
 
@@ -165,7 +184,8 @@ void runConSetup (Preprocessor *prep, int *nvar, double *x, double
 }
 
 void findFixedVariables (Preprocessor *prep) {
-  int i;
+  int i, status = 0;
+  double f = 0;
   for (i = 0; i < prep->nvar; i++) {
     if (prep->bu[i] - prep->bl[i] < PPEPS) {
       prep->is_fixed[i] = 1;
@@ -175,10 +195,17 @@ void findFixedVariables (Preprocessor *prep) {
     }
   }
 
+  (*prep->origin_cfn)(&status, &prep->nvar, &prep->ncon, prep->x, &f, prep->c);
+
   for (i = 0; i < prep->nnzj; i++) {
     if (prep->is_fixed[prep->Jvar[i]-1]) {
       if (prep->linear[prep->Jfun[i]-1]) {
-        prep->c[prep->Jfun[i]-1] -= prep->Jval[i];
+        if (prep->equatn[prep->Jfun[i]-1])
+          prep->c[prep->Jfun[i]-1] -= prep->Jval[i]*prep->x[prep->Jvar[i]-1];
+        else {
+          prep->linbndl[prep->Jfun[i]-1] -= prep->Jval[i]*prep->x[prep->Jvar[i]-1];
+          prep->linbndu[prep->Jfun[i]-1] -= prep->Jval[i]*prep->x[prep->Jvar[i]-1];
+        }
       }
       prep->Jval[i] = prep->Jval[prep->nnzj-1];
       prep->Jvar[i] = prep->Jvar[prep->nnzj-1];
@@ -190,11 +217,12 @@ void findFixedVariables (Preprocessor *prep) {
 }
 
 void findTrivialConstraints (Preprocessor *prep) {
-  int i, j;
+  int i, j, k;
   int nnzj = prep->nnzj;
   int ncon = prep->ncon - prep->ntrivial;
   int nnzj_per_line[ncon];
   int index_of_nnzj[ncon];
+  double newlim;
 
   for (i = 0; i < ncon; i++) {
     nnzj_per_line[i] = 0;
@@ -212,8 +240,25 @@ void findTrivialConstraints (Preprocessor *prep) {
       else if (nnzj_per_line[i] == 1) {
         prep->is_trivial[i] = true;
         j = index_of_nnzj[i];
-        prep->x[prep->Jvar[j]-1] = prep->c[prep->Jfun[j]-1]/prep->Jval[j];
-        prep->is_fixed[i] = true;
+        k = prep->Jvar[j]-1;
+        if (prep->equatn[i]) {
+          prep->x[k] = prep->c[prep->Jfun[j]-1]/prep->Jval[j];
+          prep->is_fixed[k] = true;
+        } else {
+          // cl <= a x_j <= cu
+          // cl/a <= x_j <= cu/a
+          newlim = prep->linbndu[prep->Jfun[j]-1]/prep->Jval[j];
+          if (newlim < prep->bu[k])
+            prep->bu[k] = newlim;
+          newlim = prep->linbndl[prep->Jfun[j]-1]/prep->Jval[j];
+          if (newlim > prep->bl[k])
+            prep->bl[k] = newlim;
+
+          if (prep->bu[k] - prep->bl[k] < PPEPS) {
+            prep->x[k] = (prep->bl[k] + prep->bu[k])/2;
+            prep->is_fixed[k] = true;
+          }
+        }
       }
     }
   }
@@ -226,6 +271,7 @@ void printJacobian (int ncon, int nvar, int nnzj, double *Jval, int *Jvar,
   int i, j;
   int n = nvar*ncon;
   double M[n];
+  return;
 
   for (i = 0; i < n; i++)
     M[i] = 0;

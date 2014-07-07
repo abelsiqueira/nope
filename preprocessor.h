@@ -28,6 +28,7 @@ typedef struct _preprocessor {
   _Bool *is_fixed, *is_trivial;
   double *x, *g, *bl, *bu;
   double *c, *y, *cl, *cu;
+  double *linbndl, *linbndu;
   double *Jval;
   int *Jvar, *Jfun;
   _Bool *equatn, *linear;

@@ -8,6 +8,8 @@
 #define STATUS_UNINITIALIZED -1
 #define STATUS_OK 0
 #define STATUS_READY 1
+#define STATUS_PROCESSING 2
+#define STATUS_PROCESSED 3
 #define STATUS_ERROR 10
 
 #define PPEPS 1e-12

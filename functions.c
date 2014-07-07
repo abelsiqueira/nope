@@ -34,7 +34,10 @@ void ppCFN (Preprocessor *prep, int * status, int * n, int * m, double * x,
     return;
   for (i = 0; i < *n; i++)
     prep->x[prep->not_fixed_index[i]] = x[i];
-  (*prep->origin_cfn)(status, &prep->nvar, m, prep->x, f, c);
+  (*prep->origin_cfn)(status, &prep->nvar, &prep->ncon, prep->x, f,
+      prep->c);
+  for (i = 0; i < *m; i++)
+    c[i] = prep->c[prep->not_trivial_index[i]];
 }
 
 void ppCOFG (Preprocessor *prep, int * status, int * n, double * x, double *
@@ -60,8 +63,11 @@ void ppCHPROD (Preprocessor *prep, int * status, int * n, int * m, _Bool *
     prep->x[prep->not_fixed_index[i]] = x[i];
     prep->workspace1[prep->not_fixed_index[i]] = vector[i];
   }
-  (*prep->origin_chprod)(status, &prep->nvar, m, goth, prep->x, y,
-      prep->workspace1, prep->workspace2);
+  for (i = 0; i < *m; i++) {
+    prep->y[prep->not_trivial_index[i]] = y[i];
+  }
+  (*prep->origin_chprod)(status, &prep->nvar, &prep->ncon, goth,
+      prep->x, prep->y, prep->workspace1, prep->workspace2);
   for (i = 0; i < *n; i++)
     result[i] = prep->workspace2[prep->not_fixed_index[i]];
 }
@@ -74,8 +80,12 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
     return;
   for (i = 0; i < *n; i++)
     prep->x[prep->not_fixed_index[i]] = x[i];
-  (*prep->origin_ccfsg)(status, &prep->nvar, m, prep->x, c, nnzj, lj, Jval,
-      Jvar, Jfun, grad);
+  (*prep->origin_ccfsg)(status, &prep->nvar, &prep->ncon, prep->x, prep->c,
+      nnzj, lj, Jval, Jvar, Jfun, grad);
+  for (i = 0; i < *m; i++)
+    c[i] = prep->c[prep->not_trivial_index[i]];
+  if (!(*grad))
+    return;
   printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);
   // First the fixed variables are removed. This leaves some empty
   // columns
@@ -101,7 +111,10 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
 
   for (i = prep->ntrivial-1; i >= 0; i--) {
     for (k = 0; k < *nnzj; k++) {
+      if (Jfun[k]-1 > prep->trivial_index[i]) {
+        Jfun[k]--;
+      }
     }
   }
-  printJacobian (prep->ncon, *n, *nnzj, Jval, Jvar, Jfun);
+  printJacobian (*m, *n, *nnzj, Jval, Jvar, Jfun);
 }
