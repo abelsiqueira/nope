@@ -8,23 +8,43 @@ void ppDIMEN (Preprocessor *prep, int *nvar, int *ncon) {
 }
 
 void ppUFN (Preprocessor *prep, int * status, int * n, double * x, double * f) {
+  int i = 0;
   if (prep == 0 || prep->status != STATUS_OK)
     return;
-  (*prep->origin_ufn)(status, n, x, f);
+  for (i = 0; i < *n; i++)
+    prep->x[prep->not_fixed_index[i]] = x[i];
+  (*prep->origin_ufn)(status, &prep->nvar, prep->x, f);
 }
 
 void ppUOFG (Preprocessor *prep, int * status, int * n, double * x, double *
     f, double * g, _Bool * grad) {
+  int i = 0;
   if (prep == 0 || prep->status != STATUS_OK)
     return;
-  (*prep->origin_uofg)(status, n, x, f, g, grad);
+  for (i = 0; i < *n; i++)
+    prep->x[prep->not_fixed_index[i]] = x[i];
+  (*prep->origin_uofg)(status, &prep->nvar, prep->x, f, prep->g, grad);
+  if (*grad) {
+    for (i = 0; i < *n; i++)
+      g[i] = prep->g[prep->not_fixed_index[i]];
+  }
 }
 
 void ppUHPROD (Preprocessor *prep, int * status, int * n, _Bool * goth,
     double * x, double * vector, double * result) {
+  int i = 0;
   if (prep == 0 || prep->status != STATUS_OK)
     return;
-  (*prep->origin_uhprod)(status, n, goth, x, vector, result);
+  for (i = 0; i < prep->nvar; i++)
+    prep->workspace1[i] = 0.0;
+  for (i = 0; i < *n; i++) {
+    prep->x[prep->not_fixed_index[i]] = x[i];
+    prep->workspace1[prep->not_fixed_index[i]] = vector[i];
+  }
+  (*prep->origin_uhprod)(status, &prep->nvar, goth, prep->x,
+      prep->workspace1, prep->workspace2);
+  for (i = 0; i < *n; i++)
+    result[i] = prep->workspace2[prep->not_fixed_index[i]];
 }
 
 void ppCFN (Preprocessor *prep, int * status, int * n, int * m, double * x,
