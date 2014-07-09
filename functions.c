@@ -88,7 +88,6 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
     c[i] = prep->c[prep->not_trivial_index[i]];
   if (!(*grad))
     return;
-  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);
   // First the fixed variables are removed. This leaves some empty
   // columns
   for (k = 0; k < *nnzj; k++) {
@@ -100,7 +99,6 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
       k--;
     }
   }
-  printJacobian (prep->ncon, prep->nvar, *nnzj, Jval, Jvar, Jfun);
   // Now we reorder the columns, reducing by one for each fixed
   // variable before that column
   for (i = prep->nfix-1; i >= 0; i--) {
@@ -118,5 +116,4 @@ void ppCCFSG (Preprocessor *prep, int * status, int * n, int * m,
       }
     }
   }
-  printJacobian (*m, *n, *nnzj, Jval, Jvar, Jfun);
 }
