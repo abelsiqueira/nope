@@ -132,6 +132,10 @@ int runPreprocessor (Preprocessor *prep) {
       prep->Jvar, prep->Jfun);
 /*  }*/
 
+  prep->nfix = 0;
+  knotfixed = 0;
+  prep->ntrivial = 0;
+  knottrivial = 0;
   for (i = 0; i < prep->nvar; i++) {
     if (prep->is_fixed[i])
       prep->fixed_index[prep->nfix++] = i;
@@ -173,7 +177,7 @@ void runConSetup (Preprocessor *prep, int *nvar, double *x, double
     bu[i] = prep->bu[j];
   }
   for (i = 0; i < *ncon; i++) {
-    j = prep->not_fixed_index[i];
+    j = prep->not_trivial_index[i];
     y[i] = prep->y[j];
     cl[i] = prep->cl[j];
     cu[i] = prep->cu[j];
@@ -271,7 +275,6 @@ void printJacobian (int ncon, int nvar, int nnzj, double *Jval, int *Jvar,
   int i, j;
   int n = nvar*ncon;
   double M[n];
-  return;
 
   for (i = 0; i < n; i++)
     M[i] = 0;

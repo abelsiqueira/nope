@@ -48,8 +48,10 @@ void ppCOFG (Preprocessor *prep, int * status, int * n, double * x, double *
   for (i = 0; i < *n; i++)
     prep->x[prep->not_fixed_index[i]] = x[i];
   (*prep->origin_cofg)(status, &prep->nvar, prep->x, f, prep->g, grad);
-  for (i = 0; i < *n; i++)
-    g[i] = prep->g[prep->not_fixed_index[i]];
+  if (*grad) {
+    for (i = 0; i < *n; i++)
+      g[i] = prep->g[prep->not_fixed_index[i]];
+  }
 }
 
 void ppCHPROD (Preprocessor *prep, int * status, int * n, int * m, _Bool *
