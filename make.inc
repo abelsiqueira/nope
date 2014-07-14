@@ -7,5 +7,6 @@ MAKE = make
 
 CC = gcc
 CFLAGS = -Wall -Wextra
+I = -I../include/
 
 PACKAGE = nope
