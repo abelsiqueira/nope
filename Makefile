@@ -1,14 +1,7 @@
-DEBUG = -ggdb
+include make.inc
 
-C = gcc
-CFLAGS = -Wall -Wextra $(DEBUG)
-OBJS = preprocessor.o functions.o
-
-all: $(OBJS)
-	ar rv libprep.a $(OBJS)
-
-%.o: %.c
-	$(C) -c -o $@ $< $(CFLAGS)
+all:
+	$(MAKE) -C lib
 
 clean:
-	rm -f $(OBJS) *.a
+	$(MAKE) clean -C lib
