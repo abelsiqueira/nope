@@ -14,7 +14,7 @@ are necessary:
   - We want compatibility with Fortran (because other people may want to use
     this);
   - We want this to work with our method
-    ([DCICPP](https://github.com/abelsiqueira/dcicpp.git))
+    ([DCICPP](https://github.com/abelsiqueira/dcicpp.git)).
 
 Note that we have not tested this in any way with Fortran, so we are currently
 not following our own guidelines. If you want to help here, we welcome you.
