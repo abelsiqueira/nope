@@ -15,12 +15,12 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-#ifndef preprocessor_h
-#define preprocessor_h
+#ifndef nope_h
+#define nope_h
 
-#include "preprocessor_definitions.h"
+#include "nope_definitions.h"
 
-typedef struct _preprocessor {
+typedef struct _nope {
   // Setup function pointers
   pusetup origin_usetup;
   pcsetup origin_csetup;
@@ -50,39 +50,39 @@ typedef struct _preprocessor {
   int *Jvar, *Jfun;
   _Bool *equatn, *linear;
   double *workspace1, *workspace2;
-} Preprocessor;
+} Nope;
 
 // {Cons,Des}tructor
-Preprocessor * initializePreprocessor ();
-void destroyPreprocessor (Preprocessor *);
+Nope * initializeNope ();
+void destroyNope (Nope *);
 
 // Setup functions
-void setFuncs (Preprocessor *, pcdimen, pusetup, pufn, puofg, puhprod,
+void setFuncs (Nope *, pcdimen, pusetup, pufn, puofg, puhprod,
     pcsetup, pcfn, pcofg, pchprod, pccfsg, pcdimsj);
-void runUncSetup (Preprocessor *, int *, double *, double *, double *);
-void runConSetup (Preprocessor *, int *, double *, double *, double *,
+void runUncSetup (Nope *, int *, double *, double *, double *);
+void runConSetup (Nope *, int *, double *, double *, double *,
     int *, double *, double *, double *, _Bool *, _Bool *, int *);
 
 // Debug Functions
 void printJacobian (int, int, int, double *, int *, int *);
 
 // Run the processor
-int runPreprocessor (Preprocessor *);
-void findFixedVariables (Preprocessor *);
-void findTrivialConstraints (Preprocessor *);
+int runNope (Nope *);
+void findFixedVariables (Nope *);
+void findTrivialConstraints (Nope *);
 
 // Interface functions
-void ppDIMEN (Preprocessor *prep,
+void ppDIMEN (Nope *nope,
               int * nvar,
               int * ncon);
 
-void ppUFN (Preprocessor *prep,
+void ppUFN (Nope *nope,
             int * status,  // (out) Output status
             int * n,       // (in)  Number of variables
             double * x,      // (in)  Current estimate of the solution
             double * f);     // (out) Objective function evaluated at x
 
-void ppUOFG (Preprocessor *prep,
+void ppUOFG (Nope *nope,
              int * status,
              int * n,
              double * x,
@@ -90,7 +90,7 @@ void ppUOFG (Preprocessor *prep,
              double * g,
              _Bool * grad);
 
-void ppUHPROD (Preprocessor *prep,
+void ppUHPROD (Nope *nope,
                int * status,
                int * n,
                _Bool * goth,
@@ -98,7 +98,7 @@ void ppUHPROD (Preprocessor *prep,
                double * vector,
                double * result);
 
-void ppCFN (Preprocessor *prep,
+void ppCFN (Nope *nope,
             int * status,
             int * n,
             int * m,
@@ -106,7 +106,7 @@ void ppCFN (Preprocessor *prep,
             double * f,
             double * c);
 
-void ppCOFG (Preprocessor *prep,
+void ppCOFG (Nope *nope,
              int * status,
              int * n,
              double * x,
@@ -114,7 +114,7 @@ void ppCOFG (Preprocessor *prep,
              double * g,
              _Bool * grad);
 
-void ppCHPROD (Preprocessor *prep,
+void ppCHPROD (Nope *nope,
                int * status,
                int * n,
                int * m,
@@ -124,7 +124,7 @@ void ppCHPROD (Preprocessor *prep,
                double * vector,
                double * result);
 
-void ppCCFSG (Preprocessor *prep,
+void ppCCFSG (Nope *nope,
               int * status,
               int * n,
               int * m,

@@ -1,6 +1,7 @@
 AR = ar rv
 CP = cp -f
 RM = rm -f
+MV = mv -f
 MAKE = make
 
 #DEBUG = -ggdb
