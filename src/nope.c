@@ -111,21 +111,21 @@ int runNope (Nope *nope) {
         &efirst, &lfirst, &nvfirst);
   }
 
-  if (nope->ncon > 0)
-    (*nope->origin_cdimsj)(&status, &nope->jmax);
-  else
-    nope->jmax = 0;
   if (nope->ncon > 0) {
+    (*nope->origin_cdimsj)(&status, &nope->jmax);
     nope->Jval = (double *) malloc(nope->jmax*sizeof(double));
     nope->Jvar = (int *) malloc(nope->jmax*sizeof(int));
     nope->Jfun = (int *) malloc(nope->jmax*sizeof(int));
-  }
+  } else
+    nope->jmax = 0;
 
   nope->status = STATUS_PROCESSING;
   while (nope->status == STATUS_PROCESSING) {
-    (*nope->origin_ccfsg)(&status, &nope->nvar, &nope->ncon,
-        nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
-        nope->Jvar, nope->Jfun, &grad);
+    if (nope->ncon > 0) {
+      (*nope->origin_ccfsg)(&status, &nope->nvar, &nope->ncon,
+          nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
+          nope->Jvar, nope->Jfun, &grad);
+    }
     for (i = 0; i < nope->ncon; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
       nope->linbndu[i] = nope->cu[i] - nope->c[i];
@@ -139,7 +139,8 @@ int runNope (Nope *nope) {
     }
     nope->status = STATUS_PROCESSED;
     findFixedVariables(nope);
-    findTrivialConstraints(nope);
+    if (nope->ncon > 0)
+      findTrivialConstraints(nope);
   }
 
   nope->nfix = 0;
@@ -212,7 +213,10 @@ void findFixedVariables (Nope *nope) {
     }
   }
 
-  (*nope->origin_cfn)(&status, &nope->nvar, &nope->ncon, nope->x, &f, nope->c);
+  if (nope->ncon > 0)
+    (*nope->origin_cfn)(&status, &nope->nvar, &nope->ncon, nope->x, &f, nope->c);
+  else
+    (*nope->origin_ufn)(&status, &nope->nvar, nope->x, &f);
 
   for (i = 0; i < nope->nnzj; i++) {
     if (nope->is_fixed[nope->Jvar[i]-1]) {

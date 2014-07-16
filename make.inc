@@ -7,7 +7,7 @@ MAKE = make
 #DEBUG = -ggdb
 
 CC = gcc
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra $(DEBUG)
 I = -I../include/
 
 PACKAGE = nope

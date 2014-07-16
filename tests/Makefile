@@ -3,13 +3,21 @@ include ../make.inc
 SRCS = $(wildcard *.c)
 TSTS = $(SRCS:.c=.tst)
 
-unit-test: unit-test-trail-whitespaces unit-tsts
+unit-test: unit-test-trail-whitespaces unit-tsts unit-test-debug
 
 unit-test-trail-whitespaces:
 	@./test-trailing-whitespaces.sh
 
+unit-test-debug:
+	@if [ ! -z "$(DEBUG)" ]; then \
+		echo -e "\e[0;31mDon't commit with DEBUG\e[0m"; exit 1; fi
+
 unit-tsts: $(TSTS)
-	for tst in $(TSTS); do ./$$tst || exit 1; done
+	@for tst in $(TSTS); do \
+		echo -e "\e[0;32mTesting $$tst\e[0m"; \
+		if ! ./$$tst; then \
+			echo -e "\e[0;31mFailed\e[0m"; \
+		fi; done
 
 %.tst: %.c
 	$(CC) -o $@ $< ../lib$(PACKAGE).a $(CFLAGS) $(I)
