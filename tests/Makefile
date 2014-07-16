@@ -1,6 +1,18 @@
 include ../make.inc
 
-unit-test: unit-test-trail-whitespaces
+SRCS = $(wildcard *.c)
+TSTS = $(SRCS:.c=.tst)
+
+unit-test: unit-test-trail-whitespaces unit-tsts
 
 unit-test-trail-whitespaces:
-	@[ -z "$$(grep -r '\s\+$$' ../*)" ] || exit 1
+	@./test-trailing-whitespaces.sh
+
+unit-tsts: $(TSTS)
+	for tst in $(TSTS); do ./$$tst || exit 1; done
+
+%.tst: %.c
+	$(CC) -o $@ $< ../lib$(PACKAGE).a $(CFLAGS) $(I)
+
+clean:
+	$(RM) $(TSTS)
