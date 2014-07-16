@@ -16,7 +16,7 @@ unit-tsts: $(TSTS)
 	@for tst in $(TSTS); do \
 		echo -e "\e[0;32mTesting $$tst\e[0m"; \
 		if ! ./$$tst; then \
-			echo -e "\e[0;31mFailed\e[0m"; \
+			echo -e "\e[0;31mFailed\e[0m"; exit 1;\
 		fi; done
 
 %.tst: %.c
