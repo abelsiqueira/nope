@@ -3,8 +3,9 @@
 
 /**
  * min f(x) = 0.5*dot(x,x)
- * s.t sum(x) - 1 = 0
+ * s.t x_1 - x_2 = 0
  *     x_1 = -1
+ *
  */
 
 #define UNUSED(x) (void)(x)
@@ -19,12 +20,10 @@ void core_cfn (int *st, int *n, int *m, double *x, double *f, double *c) {
   UNUSED(st);
   UNUSED(m);
   *f = 0.0;
-  c[0] = -1;
-  for (i = 0; i < *n; i++) {
+  for (i = 0; i < *n; i++)
     *f = x[i]*x[i];
-    c[0] += x[i];
-  }
   *f /= 2;
+  c[0] = x[0] - x[1];
 }
 
 void core_cofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
@@ -54,21 +53,20 @@ void core_chprod (int *st, int *n, int *m, bool *goth, double *x, double *y,
 
 void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
     *jmax, double *Jval, int *Jvar, int *Jfun, bool *grad) {
-  int i;
   UNUSED(st);
+  UNUSED(n);
   UNUSED(m);
   UNUSED(jmax);
-  c[0] = -1;
-  for (i = 0; i < *n; i++)
-    c[0] += x[i];
+  c[0] = x[0] - x[1];
   if (!*grad)
     return;
-  *nnzj = *n;
-  for (i = 0; i < *n; i++) {
-    Jval[i] = 1;
-    Jvar[i] = i+1;
-    Jfun[i] = 1;
-  }
+  *nnzj = 2;
+  Jval[0] = 1;
+  Jvar[0] = 1;
+  Jfun[0] = 1;
+  Jval[1] = -1;
+  Jvar[1] = 2;
+  Jfun[1] = 1;
 }
 
 void core_cdimen (int *st, int *input, int *n, int *m) {
@@ -106,7 +104,7 @@ void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
 
 void core_cdimsj (int *st, int *nnzj) {
   UNUSED(st);
-  *nnzj = nvar;
+  *nnzj = 2;
 }
 
 int main () {
@@ -122,7 +120,7 @@ int main () {
 
   destroyNope(nope);
 
-  if (n != nvar-1 || m != 1)
+  if (n != nvar-2 || m != 0)
     return 1;
 
   return 0;

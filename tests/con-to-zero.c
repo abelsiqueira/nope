@@ -3,8 +3,9 @@
 
 /**
  * min f(x) = 0.5*dot(x,x)
- * s.t sum(x) - 1 = 0
+ * s.t x_i - x_{i+1} = 0, i = 1,2,...,n-1
  *     x_1 = -1
+ *
  */
 
 #define UNUSED(x) (void)(x)
@@ -19,12 +20,11 @@ void core_cfn (int *st, int *n, int *m, double *x, double *f, double *c) {
   UNUSED(st);
   UNUSED(m);
   *f = 0.0;
-  c[0] = -1;
-  for (i = 0; i < *n; i++) {
+  for (i = 0; i < *n; i++)
     *f = x[i]*x[i];
-    c[0] += x[i];
-  }
   *f /= 2;
+  for (i = 0; i < *m; i++)
+    c[i] = x[i] - x[i+1];
 }
 
 void core_cofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
@@ -56,18 +56,21 @@ void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
     *jmax, double *Jval, int *Jvar, int *Jfun, bool *grad) {
   int i;
   UNUSED(st);
+  UNUSED(n);
   UNUSED(m);
   UNUSED(jmax);
-  c[0] = -1;
-  for (i = 0; i < *n; i++)
-    c[0] += x[i];
+  for (i = 0; i < *m; i++)
+    c[i] = x[i] - x[i+1];
   if (!*grad)
     return;
-  *nnzj = *n;
-  for (i = 0; i < *n; i++) {
-    Jval[i] = 1;
-    Jvar[i] = i+1;
-    Jfun[i] = 1;
+  *nnzj = 2*(*m);
+  for (i = 0; i < *m; i++) {
+    Jval[2*i] = 1;
+    Jval[2*i+1] = -1;
+    Jvar[2*i] = i+1;
+    Jvar[2*i+1] = i+2;
+    Jfun[2*i] = i+1;
+    Jfun[2*i+1] = i+1;
   }
 }
 
@@ -75,7 +78,7 @@ void core_cdimen (int *st, int *input, int *n, int *m) {
   UNUSED(st);
   UNUSED(input);
   *n = nvar;
-  *m = 1;
+  *m = nvar-1;
 }
 
 void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
@@ -97,16 +100,18 @@ void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
   }
   bl[0] = -1;
   bu[0] = -1;
-  y[0] = 0;
-  cl[0] = 0;
-  cu[0] = 0;
-  equatn[0] = true;
-  linear[0] = true;
+  for (i = 0; i < *m; i++) {
+    y[0] = 0;
+    cl[0] = 0;
+    cu[0] = 0;
+    equatn[0] = true;
+    linear[0] = true;
+  }
 }
 
 void core_cdimsj (int *st, int *nnzj) {
   UNUSED(st);
-  *nnzj = nvar;
+  *nnzj = 2*(nvar-1);
 }
 
 int main () {
@@ -122,7 +127,7 @@ int main () {
 
   destroyNope(nope);
 
-  if (n != nvar-1 || m != 1)
+  if (n != 0 || m != 0)
     return 1;
 
   return 0;
