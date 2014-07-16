@@ -1,3 +1,5 @@
 language: c
 script: "make && make test"
-on_success: always
+notifications:
+  email:
+    on_success: always
