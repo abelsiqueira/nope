@@ -120,8 +120,10 @@ int main () {
 
   destroyNope(nope);
 
-  if (n != nvar-2 || m != 0)
+  if (n != nvar-2 || m != 0) {
+    printf("Error: nvar = %d, ncon = %d\n", n, m);
     return 1;
+  }
 
   return 0;
 }

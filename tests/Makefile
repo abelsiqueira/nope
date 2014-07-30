@@ -20,7 +20,7 @@ unit-tsts: $(TSTS)
 		fi; done
 
 %.tst: %.c
-	$(CC) -o $@ $< ../lib$(PACKAGE).a $(CFLAGS) $(I)
+	$(CC) -o $@ $< ../lib/lib$(PACKAGE).a $(CFLAGS) $(I)
 
 clean:
 	$(RM) $(TSTS)

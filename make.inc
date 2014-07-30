@@ -11,3 +11,4 @@ CFLAGS = -Wall -Wextra $(DEBUG)
 I = -I../include/
 
 PACKAGE = nope
+PREFIX = /usr

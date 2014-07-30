@@ -9,3 +9,7 @@ clean:
 
 test:
 	$(MAKE) -C tests
+
+install:
+	$(CP) lib/lib$(PACKAGE).a $(LIBDIR)
+	$(CP) include/* $(INCLUDEDIR)

@@ -120,12 +120,12 @@ int runNope (Nope *nope) {
     nope->jmax = 0;
 
   nope->status = STATUS_PROCESSING;
+  if (nope->ncon > 0) {
+    (*nope->origin_ccfsg)(&status, &nope->nvar, &nope->ncon,
+        nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
+        nope->Jvar, nope->Jfun, &grad);
+  }
   while (nope->status == STATUS_PROCESSING) {
-    if (nope->ncon > 0) {
-      (*nope->origin_ccfsg)(&status, &nope->nvar, &nope->ncon,
-          nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
-          nope->Jvar, nope->Jfun, &grad);
-    }
     for (i = 0; i < nope->ncon; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
       nope->linbndu[i] = nope->cu[i] - nope->c[i];
