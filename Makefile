@@ -11,5 +11,5 @@ test:
 	$(MAKE) -C tests
 
 install:
-	$(CP) lib/lib$(PACKAGE).a $(LIBDIR)
-	$(CP) include/* $(INCLUDEDIR)
+	$(CP) lib/lib$(PACKAGE).a $(PREFIX)/lib
+	$(CP) include/* $(PREFIX)/include/
