@@ -3,7 +3,10 @@ include ../make.inc
 SRCS = $(wildcard *.c)
 TSTS = $(SRCS:.c=.tst)
 
-unit-test: unit-test-trail-whitespaces unit-tsts unit-test-debug
+unit-test: library unit-test-trail-whitespaces unit-tsts unit-test-debug
+
+library:
+	$(MAKE) -C ../lib all
 
 unit-test-trail-whitespaces:
 	@./test-trailing-whitespaces.sh

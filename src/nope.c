@@ -125,6 +125,8 @@ int runNope (Nope *nope) {
         nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
         nope->Jvar, nope->Jfun, &grad);
   }
+/*  printJacobian(nope->ncon, nope->nvar, nope->nnzj, nope->Jval, nope->Jvar,*/
+/*      nope->Jfun);*/
   while (nope->status == STATUS_PROCESSING) {
     for (i = 0; i < nope->ncon; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
