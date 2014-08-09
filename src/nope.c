@@ -256,8 +256,11 @@ void findTrivialConstraints (Nope *nope) {
     index_of_nnzj[i] = -1;
   }
   for (i = 0; i < nope->nnzj; i++) {
-    nnzj_per_line[nope->Jfun[i]-1]++;
-    index_of_nnzj[nope->Jfun[i]-1] = i;
+    j = nope->Jfun[i]-1;
+    if (j < nope->nlinear) {
+      nnzj_per_line[nope->Jfun[i]-1]++;
+      index_of_nnzj[nope->Jfun[i]-1] = i;
+    }
   }
 
   for (i = 0; i < nope->nlinear; i++) {
