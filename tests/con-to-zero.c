@@ -101,11 +101,11 @@ void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
   bl[0] = -1;
   bu[0] = -1;
   for (i = 0; i < *m; i++) {
-    y[0] = 0;
-    cl[0] = 0;
-    cu[0] = 0;
-    equatn[0] = true;
-    linear[0] = true;
+    y[i] = 0;
+    cl[i] = 0;
+    cu[i] = 0;
+    equatn[i] = true;
+    linear[i] = true;
   }
 }
 
