@@ -37,7 +37,7 @@ typedef struct _nope {
   // Information
   int status;
   _Bool constrained;
-  int nvar, ncon, nfix, ntrivial, jmax;
+  int nvar, ncon, nfix, ntrivial, nlinear, jmax;
   // Data
   int *fixed_index, *trivial_index;
   int *not_fixed_index, *not_trivial_index;

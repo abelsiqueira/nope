@@ -65,7 +65,7 @@ void setFuncs (Nope *nope, pcdimen cdimen, pusetup usetup,
 int runNope (Nope *nope) {
   int status = 0;
   int funit = 42, fout = 6, io_buffer = 11;
-  int efirst = 0, lfirst = 0, nvfirst = 0;
+  int efirst = 0, lfirst = 1, nvfirst = 1;
   _Bool grad = true;
   int i, j;
   int knotfixed = 0, knottrivial = 0;
@@ -110,6 +110,12 @@ int runNope (Nope *nope) {
         nope->y, nope->cl, nope->cu, nope->equatn, nope->linear,
         &efirst, &lfirst, &nvfirst);
   }
+  nope->nlinear = 0;
+  for (i = 0; i < nope->ncon; i++) {
+    if (!nope->linear[i])
+      break;
+    nope->nlinear++;
+  }
 
   if (nope->ncon > 0) {
     (*nope->origin_cdimsj)(&status, &nope->jmax);
@@ -120,7 +126,7 @@ int runNope (Nope *nope) {
     nope->jmax = 0;
 
   nope->status = STATUS_PROCESSING;
-  if (nope->ncon > 0) {
+  if (nope->nlinear > 0) {
     (*nope->origin_ccfsg)(&status, &nope->nvar, &nope->ncon,
         nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
         nope->Jvar, nope->Jfun, &grad);
@@ -128,7 +134,7 @@ int runNope (Nope *nope) {
 /*  printJacobian(nope->ncon, nope->nvar, nope->nnzj, nope->Jval, nope->Jvar,*/
 /*      nope->Jfun);*/
   while (nope->status == STATUS_PROCESSING) {
-    for (i = 0; i < nope->ncon; i++) {
+    for (i = 0; i < nope->nlinear; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
       nope->linbndu[i] = nope->cu[i] - nope->c[i];
     }
@@ -137,11 +143,13 @@ int runNope (Nope *nope) {
       if (nope->linear[j]) {
         nope->linbndl[j] += nope->Jval[i]*nope->x[nope->Jvar[i]-1];
         nope->linbndu[j] += nope->Jval[i]*nope->x[nope->Jvar[i]-1];
+      } else {
+        break;
       }
     }
     nope->status = STATUS_PROCESSED;
     findFixedVariables(nope);
-    if (nope->ncon > 0)
+    if (nope->nlinear > 0)
       findTrivialConstraints(nope);
   }
 
@@ -156,12 +164,15 @@ int runNope (Nope *nope) {
       nope->not_fixed_index[knotfixed++] = i;
   }
 
-  for (i = 0; i < nope->ncon; i++) {
+  for (i = 0; i < nope->nlinear; i++) {
     if (nope->is_trivial[i]) {
       nope->trivial_index[nope->ntrivial++] = i;
       nope->y[i] = 0;
     } else
       nope->not_trivial_index[knottrivial++] = i;
+  }
+  for (i = nope->nlinear; i < nope->ncon; i++) {
+    nope->not_trivial_index[knottrivial++] = i;
   }
 
   nope->status = STATUS_OK;
@@ -215,44 +226,41 @@ void findFixedVariables (Nope *nope) {
     }
   }
 
-  if (nope->ncon > 0)
+  if (nope->nlinear > 0) {
     (*nope->origin_cfn)(&status, &nope->nvar, &nope->ncon, nope->x, &f, nope->c);
-  else
-    (*nope->origin_ufn)(&status, &nope->nvar, nope->x, &f);
 
-  for (i = 0; i < nope->nnzj; i++) {
-    if (nope->is_fixed[nope->Jvar[i]-1]) {
-      if (nope->linear[nope->Jfun[i]-1]) {
-        nope->linbndl[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[nope->Jvar[i]-1];
-        nope->linbndu[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[nope->Jvar[i]-1];
+    for (i = 0; i < nope->nnzj; i++) {
+      if (nope->is_fixed[nope->Jvar[i]-1]) {
+        if (nope->linear[nope->Jfun[i]-1]) {
+          nope->linbndl[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[nope->Jvar[i]-1];
+          nope->linbndu[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[nope->Jvar[i]-1];
+        }
+        nope->Jval[i] = nope->Jval[nope->nnzj-1];
+        nope->Jvar[i] = nope->Jvar[nope->nnzj-1];
+        nope->Jfun[i] = nope->Jfun[nope->nnzj-1];
+        nope->nnzj--;
+        i--;
       }
-      nope->Jval[i] = nope->Jval[nope->nnzj-1];
-      nope->Jvar[i] = nope->Jvar[nope->nnzj-1];
-      nope->Jfun[i] = nope->Jfun[nope->nnzj-1];
-      nope->nnzj--;
-      i--;
     }
   }
 }
 
 void findTrivialConstraints (Nope *nope) {
   int i, j, k;
-  int nnzj = nope->nnzj;
-  int ncon = nope->ncon;
-  int nnzj_per_line[ncon];
-  int index_of_nnzj[ncon];
+  int nnzj_per_line[nope->nlinear];
+  int index_of_nnzj[nope->nlinear];
   double newlim;
 
-  for (i = 0; i < ncon; i++) {
+  for (i = 0; i < nope->nlinear; i++) {
     nnzj_per_line[i] = 0;
     index_of_nnzj[i] = -1;
   }
-  for (i = 0; i < nnzj; i++) {
+  for (i = 0; i < nope->nnzj; i++) {
     nnzj_per_line[nope->Jfun[i]-1]++;
     index_of_nnzj[nope->Jfun[i]-1] = i;
   }
 
-  for (i = 0; i < ncon; i++) {
+  for (i = 0; i < nope->nlinear; i++) {
     if (nope->is_trivial[i])
       continue;
     if (nope->linear[nope->not_trivial_index[i]]) {
@@ -283,7 +291,8 @@ void findTrivialConstraints (Nope *nope) {
           }
         }
       }
-    }
+    } else
+      break;
   }
 }
 
