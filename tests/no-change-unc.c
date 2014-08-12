@@ -68,8 +68,8 @@ int main () {
 
   nope = initializeNope();
 
-  setFuncs(nope, core_cdimen, core_usetup, core_ufn, core_uofg, core_uhprod, 0,
-      0, 0, 0, 0, 0);
+  setFuncs(nope, core_cdimen, core_usetup, 0, core_ufn, core_uofg,
+      core_uhprod, 0, 0, 0, 0, 0, 0, 0);
   runNope(nope);
 
   ppDIMEN(nope, &n, &m);

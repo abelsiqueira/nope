@@ -24,11 +24,13 @@ Nope * initializeNope () {
 
   nope->origin_usetup = 0;
   nope->origin_csetup = 0;
+  nope->origin_unames = 0;
   nope->origin_ufn = 0;
   nope->origin_uofg = 0;
   nope->origin_uhprod = 0;
   nope->origin_cdimen = 0;
   nope->origin_cdimsj = 0;
+  nope->origin_cnames = 0;
   nope->origin_cfn = 0;
   nope->origin_cofg = 0;
   nope->origin_chprod = 0;
@@ -44,15 +46,17 @@ void destroyNope (Nope *nope) {
     free(nope);
 }
 
-void setFuncs (Nope *nope, pcdimen cdimen, pusetup usetup,
-    pufn ufn, puofg uofg, puhprod uhprod, pcsetup csetup, pcfn cfn,
+void setFuncs (Nope *nope, pcdimen cdimen, pusetup usetup, punames unames, pufn
+    ufn, puofg uofg, puhprod uhprod, pcsetup csetup, pcnames cnames, pcfn cfn,
     pcofg cofg, pchprod chprod, pccfsg ccfsg, pcdimsj cdimsj) {
   nope->origin_cdimen = cdimen;
   nope->origin_usetup = usetup;
+  nope->origin_unames = unames;
   nope->origin_ufn = ufn;
   nope->origin_uofg = uofg;
   nope->origin_uhprod = uhprod;
   nope->origin_csetup = csetup;
+  nope->origin_cnames = cnames;
   nope->origin_cfn = cfn;
   nope->origin_cofg = cofg;
   nope->origin_chprod = chprod;

@@ -18,6 +18,10 @@
 #include "nope.h"
 extern Nope *nope;
 
+void unames (int *status, int *n, char *pname, char *vnames) {
+  ppUNAMES(nope, status, n, pname, vnames);
+}
+
 void ufn (int *status, int *n, double *x, double *f) {
   ppUFN(nope, status, n, x, f);
 }
@@ -30,6 +34,11 @@ void uofg (int * status, int * n, double * x,
 void uhprod (int * status, int * n, _Bool *
     goth, double * x, double * vector, double * result) {
   ppUHPROD(nope, status, n, goth, x, vector, result);
+}
+
+void cnames (int *status, int *n, int *m, char *pname, char *vnames, char
+    *cnames) {
+  ppCNAMES(nope, status, n, m, pname, vnames, cnames);
 }
 
 void cfn (int * status, int * n, int * m, double

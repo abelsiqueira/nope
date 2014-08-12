@@ -25,9 +25,11 @@ typedef struct _nope {
   pusetup origin_usetup;
   pcsetup origin_csetup;
   // Unprocessed function pointers
+  punames origin_unames;
   pufn    origin_ufn;
   puofg   origin_uofg;
   puhprod origin_uhprod;
+  pcnames origin_cnames;
   pcdimen origin_cdimen;
   pcdimsj origin_cdimsj;
   pcfn    origin_cfn;
@@ -57,8 +59,8 @@ Nope * initializeNope ();
 void destroyNope (Nope *);
 
 // Setup functions
-void setFuncs (Nope *, pcdimen, pusetup, pufn, puofg, puhprod,
-    pcsetup, pcfn, pcofg, pchprod, pccfsg, pcdimsj);
+void setFuncs (Nope *, pcdimen, pusetup, punames, pufn, puofg, puhprod, pcsetup,
+    pcnames, pcfn, pcofg, pchprod, pccfsg, pcdimsj);
 void runUncSetup (Nope *, int *, double *, double *, double *);
 void runConSetup (Nope *, int *, double *, double *, double *,
     int *, double *, double *, double *, _Bool *, _Bool *, int *);
@@ -75,6 +77,12 @@ void findTrivialConstraints (Nope *);
 void ppDIMEN (Nope *nope,
               int * nvar,
               int * ncon);
+
+void ppUNAMES (Nope *nope,
+               int * status,
+               int * n,
+               char * pname,
+               char * vnames);
 
 void ppUFN (Nope *nope,
             int * status,  // (out) Output status
@@ -97,6 +105,14 @@ void ppUHPROD (Nope *nope,
                double * x,
                double * vector,
                double * result);
+
+void ppCNAMES (Nope *nope,
+               int * status,
+               int * n,
+               int * m,
+               char * pname,
+               char * vnames,
+               char * cnames);
 
 void ppCFN (Nope *nope,
             int * status,

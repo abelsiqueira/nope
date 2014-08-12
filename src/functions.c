@@ -24,6 +24,14 @@ void ppDIMEN (Nope *nope, int *nvar, int *ncon) {
   *ncon = nope->ncon - nope->ntrivial;
 }
 
+void ppUNAMES (Nope *nope, int * status, int * n, char * pname, char * vnames) {
+  char v[nope->nvar];
+  UNUSED(n);
+  UNUSED(vnames);
+  (*nope->origin_unames)(status, &nope->nvar, pname, v);
+  // We, knowingly, decided to not pass the names of the variables
+}
+
 void ppUFN (Nope *nope, int * status, int * n, double * x, double * f) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
@@ -62,6 +70,17 @@ void ppUHPROD (Nope *nope, int * status, int * n, _Bool * goth,
       nope->workspace1, nope->workspace2);
   for (i = 0; i < *n; i++)
     result[i] = nope->workspace2[nope->not_fixed_index[i]];
+}
+
+void ppCNAMES (Nope *nope, int * status, int * n, int * m, char * pname, char *
+    vnames, char * cnames) {
+  char v[nope->nvar], c[nope->ncon];
+  UNUSED(n);
+  UNUSED(m);
+  UNUSED(vnames);
+  UNUSED(cnames);
+  (*nope->origin_cnames)(status, &nope->nvar, &nope->ncon, pname, v, c);
+  // We, knowingly, decided to not pass the names of the variables
 }
 
 void ppCFN (Nope *nope, int * status, int * n, int * m, double * x,
