@@ -25,7 +25,7 @@ void ppDIMEN (Nope *nope, int *nvar, int *ncon) {
 }
 
 void ppUNAMES (Nope *nope, int * status, int * n, char * pname, char * vnames) {
-  char v[nope->nvar];
+  char v[10*nope->nvar];
   UNUSED(n);
   UNUSED(vnames);
   (*nope->origin_unames)(status, &nope->nvar, pname, v);
@@ -74,7 +74,7 @@ void ppUHPROD (Nope *nope, int * status, int * n, _Bool * goth,
 
 void ppCNAMES (Nope *nope, int * status, int * n, int * m, char * pname, char *
     vnames, char * cnames) {
-  char v[nope->nvar], c[nope->ncon];
+  char v[10*nope->nvar], c[10*nope->ncon];
   UNUSED(n);
   UNUSED(m);
   UNUSED(vnames);
