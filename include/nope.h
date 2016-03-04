@@ -80,76 +80,76 @@ void ppDIMEN (Nope *nope,
 
 void ppUNAMES (Nope *nope,
                int * status,
-               int * n,
+               const int * n,
                char * pname,
                char * vnames);
 
 void ppUFN (Nope *nope,
             int * status,  // (out) Output status
-            int * n,       // (in)  Number of variables
-            double * x,      // (in)  Current estimate of the solution
+            const int * n,       // (in)  Number of variables
+            const double * x,      // (in)  Current estimate of the solution
             double * f);     // (out) Objective function evaluated at x
 
 void ppUOFG (Nope *nope,
              int * status,
-             int * n,
-             double * x,
+             const int * n,
+             const double * x,
              double * f,
              double * g,
-             _Bool * grad);
+             const _Bool * grad);
 
 void ppUHPROD (Nope *nope,
                int * status,
-               int * n,
-               _Bool * goth,
-               double * x,
-               double * vector,
+               const int * n,
+               const _Bool * goth,
+               const double * x,
+               const double * vector,
                double * result);
 
 void ppCNAMES (Nope *nope,
                int * status,
-               int * n,
-               int * m,
+               const int * n,
+               const int * m,
                char * pname,
                char * vnames,
                char * cnames);
 
 void ppCFN (Nope *nope,
             int * status,
-            int * n,
-            int * m,
-            double * x,
+            const int * n,
+            const int * m,
+            const double * x,
             double * f,
             double * c);
 
 void ppCOFG (Nope *nope,
              int * status,
-             int * n,
-             double * x,
+             const int * n,
+             const double * x,
              double * f,
              double * g,
              _Bool * grad);
 
 void ppCHPROD (Nope *nope,
                int * status,
-               int * n,
-               int * m,
-               _Bool * goth,
-               double * x,
-               double * y,
+               const int * n,
+               const int * m,
+               const _Bool * goth,
+               const double * x,
+               const double * y,
                double * vector,
                double * result);
 
 void ppCCFSG (Nope *nope,
               int * status,
-              int * n,
-              int * m,
-              double * x,
+              const int * n,
+              const int * m,
+              const double * x,
               double * c,
               int * nnzj,
-              int * lj,
+              const int * lj,
               double * Jval,
               int * Jvar,
               int * Jfun,
-              _Bool * grad);
+              const _Bool * grad);
 #endif

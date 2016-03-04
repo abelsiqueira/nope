@@ -24,7 +24,7 @@ void ppDIMEN (Nope *nope, int *nvar, int *ncon) {
   *ncon = nope->ncon - nope->ntrivial;
 }
 
-void ppUNAMES (Nope *nope, int * status, int * n, char * pname, char * vnames) {
+void ppUNAMES (Nope *nope, int * status, const int * n, char * pname, char * vnames) {
   char v[10*nope->nvar];
   UNUSED(n);
   UNUSED(vnames);
@@ -32,7 +32,7 @@ void ppUNAMES (Nope *nope, int * status, int * n, char * pname, char * vnames) {
   // We, knowingly, decided to not pass the names of the variables
 }
 
-void ppUFN (Nope *nope, int * status, int * n, double * x, double * f) {
+void ppUFN (Nope *nope, int * status, const int * n, const double * x, double * f) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
     return;
@@ -41,8 +41,8 @@ void ppUFN (Nope *nope, int * status, int * n, double * x, double * f) {
   (*nope->origin_ufn)(status, &nope->nvar, nope->x, f);
 }
 
-void ppUOFG (Nope *nope, int * status, int * n, double * x, double *
-    f, double * g, _Bool * grad) {
+void ppUOFG (Nope *nope, int * status, const int * n, const double * x, double *
+    f, double * g, const _Bool * grad) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
     return;
@@ -55,8 +55,8 @@ void ppUOFG (Nope *nope, int * status, int * n, double * x, double *
   }
 }
 
-void ppUHPROD (Nope *nope, int * status, int * n, _Bool * goth,
-    double * x, double * vector, double * result) {
+void ppUHPROD (Nope *nope, int * status, const int * n, const _Bool * goth,
+    const double * x, const double * vector, double * result) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
     return;
@@ -72,7 +72,7 @@ void ppUHPROD (Nope *nope, int * status, int * n, _Bool * goth,
     result[i] = nope->workspace2[nope->not_fixed_index[i]];
 }
 
-void ppCNAMES (Nope *nope, int * status, int * n, int * m, char * pname, char *
+void ppCNAMES (Nope *nope, int * status, const int * n, const int * m, char * pname, char *
     vnames, char * cnames) {
   char v[10*nope->nvar], c[10*nope->ncon];
   UNUSED(n);
@@ -83,7 +83,7 @@ void ppCNAMES (Nope *nope, int * status, int * n, int * m, char * pname, char *
   // We, knowingly, decided to not pass the names of the variables
 }
 
-void ppCFN (Nope *nope, int * status, int * n, int * m, double * x,
+void ppCFN (Nope *nope, int * status, const int * n, const int * m, const double * x,
     double * f, double * c) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
@@ -96,7 +96,7 @@ void ppCFN (Nope *nope, int * status, int * n, int * m, double * x,
     c[i] = nope->c[nope->not_trivial_index[i]];
 }
 
-void ppCOFG (Nope *nope, int * status, int * n, double * x, double *
+void ppCOFG (Nope *nope, int * status, const int * n, const double * x, double *
     f, double * g, _Bool * grad) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
@@ -110,8 +110,8 @@ void ppCOFG (Nope *nope, int * status, int * n, double * x, double *
   }
 }
 
-void ppCHPROD (Nope *nope, int * status, int * n, int * m, _Bool *
-    goth, double * x, double * y, double * vector, double * result) {
+void ppCHPROD (Nope *nope, int * status, const int * n, const int * m, const _Bool *
+    goth, const double * x, const double * y, double * vector, double * result) {
   int i = 0;
   if (nope == 0 || nope->status != STATUS_OK)
     return;
@@ -130,9 +130,9 @@ void ppCHPROD (Nope *nope, int * status, int * n, int * m, _Bool *
     result[i] = nope->workspace2[nope->not_fixed_index[i]];
 }
 
-void ppCCFSG (Nope *nope, int * status, int * n, int * m,
-    double * x, double * c, int * nnzj, int * lj, double * Jval, int *
-    Jvar, int * Jfun, _Bool * grad) {
+void ppCCFSG (Nope *nope, int * status, const int * n, const int * m, const
+    double * x, double * c, int * nnzj, const int * lj, double * Jval, int *
+    Jvar, int * Jfun, const _Bool * grad) {
   int i, k;
   if (nope == 0 || nope->status != STATUS_OK)
     return;

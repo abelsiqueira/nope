@@ -2,24 +2,24 @@
 #define nope_interface_h
 
 // Unconstrained
-typedef void (*pusetup) (int *, int *, int *, int *, int *, double *, double *,
+typedef void (*pusetup) (int *, const int *, const int *, const int *, int *, double *, double *,
                          double *);
-typedef void (*punames) (int *, int *, char *, char *);
-typedef void (*pufn)    (int *, int *, double *, double *);
-typedef void (*puofg)   (int *, int *, double *, double *, double *, _Bool *);
-typedef void (*puhprod) (int *, int *, _Bool *, double *, double *, double *);
+typedef void (*punames) (int *, const int *, char *, char *);
+typedef void (*pufn)    (int *, const int *, const double *, double *);
+typedef void (*puofg)   (int *, const int *, const double *, double *, double *, const _Bool *);
+typedef void (*puhprod) (int *, const int *, const _Bool *, const double *, const double *, double *);
 // Constrained
-typedef void (*pcdimen) (int *, int *, int *, int *);
+typedef void (*pcdimen) (int *, const int *, int *, int *);
 typedef void (*pcdimsj) (int *, int *);
-typedef void (*pcsetup) (int *, int *, int *, int *, int *, int *, double *,
+typedef void (*pcsetup) (int *, const int *, const int *, const int *, int *, int *, double *,
                          double *, double *, double *, double *, double *, _Bool
-                         *, _Bool *, int *, int *, int *);
-typedef void (*pcnames) (int *, int *, int *, char *, char *, char *);
-typedef void (*pcfn)    (int *, int *, int *, double *, double *, double *);
-typedef void (*pcofg)   (int *, int *, double *, double *, double *, _Bool *);
-typedef void (*pccfsg)  (int *, int *, int *, double *, double *, int *, int *,
-                         double *, int *, int *, _Bool *);
-typedef void (*pchprod) (int *, int *, int *, _Bool *, double *, double *,
+                         *, _Bool *, const int *, const int *, const int *);
+typedef void (*pcnames) (int *, const int *, const int *, char *, char *, char *);
+typedef void (*pcfn)    (int *, const int *, const int *, const double *, double *, double *);
+typedef void (*pcofg)   (int *, const int *, const double *, double *, double *, _Bool *);
+typedef void (*pccfsg)  (int *, const int *, const int *, const double *, double *, int *, const int *,
+                         double *, int *, int *, const _Bool *);
+typedef void (*pchprod) (int *, const int *, const int *, const _Bool *, const double *, const double *,
                          double *, double *);
 
 #endif
