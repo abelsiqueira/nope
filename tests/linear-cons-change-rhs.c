@@ -1,11 +1,14 @@
 #include <stdio.h>
 #include "nope.h"
+#include <assert.h>
 
 /**
  * min f(x) = 0.5*dot(x,x)
- * s.t x_i - x_{i+1} = 0, i = 1,2,...,n-1
- *     x_1 = -1
+ * s.t x_i - x_{i+1} + 1 = 0, i = 1,2,...,n-1
+ *     1 <= x_1 <= 1
  *
+ * Notice that this is not Ax = b, but Ax - b = 0, so the nope->rhs should be
+ * corrected.
  */
 
 #define UNUSED(x) (void)(x)
@@ -24,7 +27,7 @@ void core_cfn (int *st, const int *n, const int *m, const double *x, double *f, 
     *f = x[i]*x[i];
   *f /= 2;
   for (i = 0; i < *m; i++)
-    c[i] = x[i] - x[i+1];
+    c[i] = x[i] - x[i+1] + 1;
 }
 
 void core_cofg (int *st, const int *n, const double *x, double *f, double *g, bool *grad) {
@@ -48,7 +51,7 @@ void core_ccfsg (int *st, const int *n, const int *m, const double *x, double *c
   UNUSED(m);
   UNUSED(jmax);
   for (i = 0; i < *m; i++)
-    c[i] = x[i] - x[i+1];
+    c[i] = x[i] - x[i+1] + 1;
   if (!*grad)
     return;
   *nnzj = 2*(*m);
@@ -86,8 +89,8 @@ void core_csetup (int *st, const int *input, const int *out, const int *io_buffe
     bl[i] = -1e20;
     bu[i] = 1e20;
   }
-  bl[0] = -1;
-  bu[0] = -1;
+  bl[0] = 1;
+  bu[0] = 1;
   for (i = 0; i < *m; i++) {
     y[i] = 0;
     cl[i] = 0;
@@ -112,6 +115,14 @@ int main () {
   runNope(nope);
 
   ppDIMEN(nope, &n, &m);
+
+  // Test the solution if [1, 2, 3, ..., n]
+  for (int i = 0; i < nope->nvar; i++) {
+    assert(nope->x[i] == i+1);
+  }
+  // int st = 0;
+  // double f = 1e20;
+  // nope->origin_cfn(&st, &nope->nvar, &nope->ncon, nope->x, &f, nope->c);
 
   destroyNope(nope);
 

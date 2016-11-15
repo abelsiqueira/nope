@@ -4,7 +4,7 @@ RM = rm -f
 MV = mv -f
 MAKE = make
 
-#DEBUG = -ggdb
+#DEBUG = -ggdb -DVERBOSE
 
 CC = gcc
 CFLAGS = -Wall -Wextra $(DEBUG)

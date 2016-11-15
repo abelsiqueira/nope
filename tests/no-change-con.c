@@ -11,7 +11,7 @@
 Nope *nope;
 #include "nope_interface.h"
 
-void core_cfn (int *st, int *n, int *m, double *x, double *f, double *c) {
+void core_cfn (int *st, const int *n, const int *m, const double *x, double *f, double *c) {
   UNUSED(st);
   UNUSED(n);
   UNUSED(m);
@@ -19,7 +19,7 @@ void core_cfn (int *st, int *n, int *m, double *x, double *f, double *c) {
   c[0] = x[0] + x[1] - 1;
 }
 
-void core_cofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
+void core_cofg (int *st, const int *n, const double *x, double *f, double *g, bool *grad) {
   UNUSED(st);
   UNUSED(n);
   *f = 0.5*(x[0]*x[0] + x[1]*x[1]);
@@ -29,20 +29,8 @@ void core_cofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
   }
 }
 
-void core_chprod (int *st, int *n, int *m, bool *goth, double *x, double *y,
-    double *p, double *q) {
-  UNUSED(st);
-  UNUSED(n);
-  UNUSED(m);
-  UNUSED(goth);
-  UNUSED(x);
-  UNUSED(y);
-  q[0] = p[0];
-  q[1] = p[1];
-}
-
-void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
-    *jmax, double *Jval, int *Jvar, int *Jfun, bool *grad) {
+void core_ccfsg (int *st, const int *n, const int *m, const double *x, double *c, int *nnzj, const int
+    *jmax, double *Jval, int *Jvar, int *Jfun, const bool *grad) {
   UNUSED(st);
   UNUSED(n);
   UNUSED(m);
@@ -59,16 +47,16 @@ void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
   Jfun[1] = 1;
 }
 
-void core_cdimen (int *st, int *input, int *n, int *m) {
+void core_cdimen (int *st, const int *input, int *n, int *m) {
   UNUSED(st);
   UNUSED(input);
   *n = 2;
   *m = 1;
 }
 
-void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
+void core_csetup (int *st, const int *input, const int *out, const int *io_buffer, int *n, int *m,
     double *x, double *bl, double *bu, double *y, double *cl, double *cu, bool
-    *equatn, bool *linear, int *e_order, int *l_order, int *v_order) {
+    *equatn, bool *linear, const int *e_order, const int *l_order, const int *v_order) {
   int i = 0;
   UNUSED(st);
   UNUSED(input);
@@ -102,7 +90,7 @@ int main () {
   nope = initializeNope();
 
   setFuncs(nope, core_cdimen, 0, 0, 0, 0, 0, core_csetup, 0, core_cfn,
-      core_cofg, core_chprod, core_ccfsg, core_cdimsj);
+      core_cofg, 0, core_ccfsg, core_cdimsj);
   runNope(nope);
 
   ppDIMEN(nope, &n, &m);

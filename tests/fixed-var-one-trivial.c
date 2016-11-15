@@ -1,11 +1,12 @@
 #include <stdio.h>
 #include "nope.h"
+#include <assert.h>
 
 /**
  * min f(x) = 0.5*dot(x,x)
  * s.t sum(x) - 1 = 0
- *     x_1 - x_2 = 0
- *     x_1 = -1
+ *     x_1 - x_2 = 3
+ *     -1 <= x_1 <= -1
  */
 
 #define UNUSED(x) (void)(x)
@@ -15,7 +16,7 @@ int nvar = 10;
 Nope *nope;
 #include "nope_interface.h"
 
-void core_cfn (int *st, int *n, int *m, double *x, double *f, double *c) {
+void core_cfn (int *st, const int *n, const int *m, const double *x, double *f, double *c) {
   int i;
   UNUSED(st);
   UNUSED(m);
@@ -26,10 +27,10 @@ void core_cfn (int *st, int *n, int *m, double *x, double *f, double *c) {
     c[0] += x[i];
   }
   *f /= 2;
-  c[1] = x[0] - x[1];
+  c[1] = x[0] - x[1] - 3;
 }
 
-void core_cofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
+void core_cofg (int *st, const int *n, const double *x, double *f, double *g, bool *grad) {
   int i;
   UNUSED(st);
   *f = 0.0;
@@ -42,20 +43,8 @@ void core_cofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
   }
 }
 
-void core_chprod (int *st, int *n, int *m, bool *goth, double *x, double *y,
-    double *p, double *q) {
-  int i;
-  UNUSED(st);
-  UNUSED(m);
-  UNUSED(goth);
-  UNUSED(x);
-  UNUSED(y);
-  for (i = 0; i < *n; i++)
-    q[i] = p[i];
-}
-
-void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
-    *jmax, double *Jval, int *Jvar, int *Jfun, bool *grad) {
+void core_ccfsg (int *st, const int *n, const int *m, const double *x, double *c, int *nnzj, const int
+    *jmax, double *Jval, int *Jvar, int *Jfun, const bool *grad) {
   int i;
   UNUSED(st);
   UNUSED(m);
@@ -63,7 +52,7 @@ void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
   c[0] = -1;
   for (i = 0; i < *n; i++)
     c[0] += x[i];
-  c[1] = x[0] - x[1];
+  c[1] = x[0] - x[1] - 3;
   if (!*grad)
     return;
   *nnzj = *n+2;
@@ -80,16 +69,16 @@ void core_ccfsg (int *st, int *n, int *m, double *x, double *c, int *nnzj, int
   Jfun[*n+1] = 2;
 }
 
-void core_cdimen (int *st, int *input, int *n, int *m) {
+void core_cdimen (int *st, const int *input, int *n, int *m) {
   UNUSED(st);
   UNUSED(input);
   *n = nvar;
   *m = 2;
 }
 
-void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
+void core_csetup (int *st, const int *input, const int *out, const int *io_buffer, int *n, int *m,
     double *x, double *bl, double *bu, double *y, double *cl, double *cu, bool
-    *equatn, bool *linear, int *e_order, int *l_order, int *v_order) {
+    *equatn, bool *linear, const int *e_order, const int *l_order, const int *v_order) {
   int i = 0;
   UNUSED(st);
   UNUSED(input);
@@ -120,7 +109,7 @@ void core_csetup (int *st, int *input, int *out, int *io_buffer, int *n, int *m,
 
 void core_cdimsj (int *st, int *nnzj) {
   UNUSED(st);
-  *nnzj = nvar;
+  *nnzj = nvar+2;
 }
 
 int main () {
@@ -129,12 +118,15 @@ int main () {
   nope = initializeNope();
 
   setFuncs(nope, core_cdimen, 0, 0, 0, 0, 0, core_csetup, 0, core_cfn,
-      core_cofg, core_chprod, core_ccfsg, core_cdimsj);
+      core_cofg, 0, core_ccfsg, core_cdimsj);
   runNope(nope);
 
   ppDIMEN(nope, &n, &m);
 
   destroyNope(nope);
+
+  assert(nope->x[0] == -1.0);
+  assert(nope->x[1] == -4.0);
 
   if (n != nvar-2 || m != 1)
     return 1;

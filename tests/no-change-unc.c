@@ -11,7 +11,7 @@
 Nope *nope;
 #include "nope_interface.h"
 
-void core_ufn (int *st, int *n, double *x, double *f) {
+void core_ufn (int *st, const int *n, const double *x, double *f) {
   int i;
   UNUSED(st);
   *f = 0.0;
@@ -20,7 +20,7 @@ void core_ufn (int *st, int *n, double *x, double *f) {
   *f /= 2;
 }
 
-void core_uofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
+void core_uofg (int *st, const int *n, const double *x, double *f, double *g, const bool *grad) {
   int i;
   UNUSED(st);
   *f = 0.0;
@@ -33,23 +33,14 @@ void core_uofg (int *st, int *n, double *x, double *f, double *g, bool *grad) {
   }
 }
 
-void core_uhprod (int *st, int *n, bool *goth, double *x, double *p, double *q) {
-  int i;
-  UNUSED(st);
-  UNUSED(goth);
-  UNUSED(x);
-  for (i = 0; i < *n; i++)
-    q[i] = p[i];
-}
-
-void core_cdimen (int *st, int *input, int *n, int *m) {
+void core_cdimen (int *st, const int *input, int *n, int *m) {
   UNUSED(st);
   UNUSED(input);
   *n = 5;
   *m = 0;
 }
 
-void core_usetup (int *st, int *input, int *out, int *io_buffer, int *n, double
+void core_usetup (int *st, const int *input, const int *out, const int *io_buffer, int *n, double
     *x, double *bl, double *bu) {
   int i = 0;
   UNUSED(st);
@@ -69,7 +60,7 @@ int main () {
   nope = initializeNope();
 
   setFuncs(nope, core_cdimen, core_usetup, 0, core_ufn, core_uofg,
-      core_uhprod, 0, 0, 0, 0, 0, 0, 0);
+      0, 0, 0, 0, 0, 0, 0, 0);
   runNope(nope);
 
   ppDIMEN(nope, &n, &m);

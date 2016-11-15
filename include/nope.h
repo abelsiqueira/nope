@@ -45,7 +45,7 @@ typedef struct _nope {
   int *not_fixed_index, *not_trivial_index;
   int nnzj;
   _Bool *is_fixed, *is_trivial;
-  double *x, *g, *bl, *bu;
+  double *x, *g, *bl, *bu, *original_bl, *original_bu;
   double *c, *y, *cl, *cu;
   double *linbndl, *linbndu;
   double *Jval;
@@ -66,7 +66,9 @@ void runConSetup (Nope *, int *, double *, double *, double *,
     int *, double *, double *, double *, _Bool *, _Bool *, int *);
 
 // Debug Functions
+void printLinearConstraints (Nope *);
 void printJacobian (int, int, int, double *, int *, int *);
+void printArray (int, double *, const char *);
 
 // Run the processor
 int runNope (Nope *);

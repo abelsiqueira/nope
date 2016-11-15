@@ -1,6 +1,6 @@
 /**
  * NOPE
- * Copyright (C) 2014  Abel Soares Siqueira
+ * Copyright (C) 2014-2016  Abel Soares Siqueira
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@
 #include "nope.h"
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 
 Nope * initializeNope () {
   Nope * nope = (Nope *) malloc (sizeof(Nope));
@@ -92,6 +93,8 @@ int runNope (Nope *nope) {
   nope->g = (double *) malloc(nope->nvar*sizeof(double));
   nope->bl = (double *) malloc(nope->nvar*sizeof(double));
   nope->bu = (double *) malloc(nope->nvar*sizeof(double));
+  nope->original_bl = (double *) malloc(nope->nvar*sizeof(double));
+  nope->original_bu = (double *) malloc(nope->nvar*sizeof(double));
   if (nope->ncon > 0) {
     nope->c = (double *) malloc(nope->ncon*sizeof(double));
     nope->y = (double *) malloc(nope->ncon*sizeof(double));
@@ -107,12 +110,16 @@ int runNope (Nope *nope) {
 
   if (nope->ncon == 0) {
     (nope->origin_usetup)(&status, &funit, &fout, &io_buffer,
-        &nope->nvar, nope->x, nope->bl, nope->bu);
+        &nope->nvar, nope->x, nope->original_bl, nope->original_bu);
   } else {
     (nope->origin_csetup)(&status, &funit, &fout, &io_buffer,
-        &nope->nvar, &nope->ncon, nope->x, nope->bl, nope->bu,
+        &nope->nvar, &nope->ncon, nope->x, nope->original_bl, nope->original_bu,
         nope->y, nope->cl, nope->cu, nope->equatn, nope->linear,
         &efirst, &lfirst, &nvfirst);
+  }
+  for (i = 0; i < nope->nvar; i++) {
+    nope->bl[i] = nope->original_bl[i];
+    nope->bu[i] = nope->original_bu[i];
   }
   nope->nlinear = 0;
   for (i = 0; i < nope->ncon; i++) {
@@ -134,10 +141,7 @@ int runNope (Nope *nope) {
     (*nope->origin_ccfsg)(&status, &nope->nvar, &nope->ncon,
         nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
         nope->Jvar, nope->Jfun, &grad);
-  }
-/*  printJacobian(nope->ncon, nope->nvar, nope->nnzj, nope->Jval, nope->Jvar,*/
-/*      nope->Jfun);*/
-  while (nope->status == STATUS_PROCESSING) {
+
     for (i = 0; i < nope->nlinear; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
       nope->linbndu[i] = nope->cu[i] - nope->c[i];
@@ -151,8 +155,28 @@ int runNope (Nope *nope) {
         break;
       }
     }
+  }
+/*  printJacobian(nope->ncon, nope->nvar, nope->nnzj, nope->Jval, nope->Jvar,*/
+/*      nope->Jfun);*/
+  while (nope->status == STATUS_PROCESSING) {
     nope->status = STATUS_PROCESSED;
+
+#ifdef VERBOSE
+    printArray(nope->nvar, nope->x, "x");
+    printf("Linear contraints:\n");
+    printLinearConstraints(nope);
+    printBounds(nope);
+#endif
+
     findFixedVariables(nope);
+
+#ifdef VERBOSE
+    printArray(nope->nvar, nope->x, "x");
+    printf("Linear contraints:\n");
+    printLinearConstraints(nope);
+    printBounds(nope);
+#endif
+
     if (nope->nlinear > 0)
       findTrivialConstraints(nope);
   }
@@ -207,8 +231,13 @@ void runConSetup (Nope *nope, int *nvar, double *x, double
   for (i = 0; i < *ncon; i++) {
     j = nope->not_trivial_index[i];
     y[i] = nope->y[j];
-    cl[i] = nope->cl[j];
-    cu[i] = nope->cu[j];
+    if (nope->linear[j]) {
+      cl[i] = nope->linbndl[j];
+      cu[i] = nope->linbndu[j];
+    } else {
+      cl[i] = nope->cl[j];
+      cu[i] = nope->cu[j];
+    }
     equatn[i] = nope->equatn[j];
     linear[i] = nope->linear[j];
   }
@@ -216,8 +245,7 @@ void runConSetup (Nope *nope, int *nvar, double *x, double
 }
 
 void findFixedVariables (Nope *nope) {
-  int i, status = 0;
-  double f = 0;
+  int i, j = -1;
   for (i = 0; i < nope->nvar; i++) {
     if (nope->is_fixed[i])
       continue;
@@ -225,25 +253,29 @@ void findFixedVariables (Nope *nope) {
       nope->status = STATUS_PROCESSING;
       nope->is_fixed[i] = 1;
       nope->x[i] = (nope->bl[i] + nope->bu[i])/2;
+      j = i;
     } else {
       nope->is_fixed[i] = 0;
     }
   }
+  if (j == -1)
+    return;
+#ifdef VERBOSE
+  printf("Removing fixed variable x%d = %3.1f\n", j+1, nope->x[j]);
+#endif
 
   if (nope->nlinear > 0) {
-    (*nope->origin_cfn)(&status, &nope->nvar, &nope->ncon, nope->x, &f, nope->c);
-
     for (i = 0; i < nope->nnzj; i++) {
-      if (nope->is_fixed[nope->Jvar[i]-1]) {
+      if (j == nope->Jvar[i]-1) {
         if (nope->linear[nope->Jfun[i]-1]) {
-          nope->linbndl[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[nope->Jvar[i]-1];
-          nope->linbndu[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[nope->Jvar[i]-1];
+          nope->linbndl[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[j];
+          nope->linbndu[nope->Jfun[i]-1] -= nope->Jval[i]*nope->x[j];
+          nope->Jval[i] = nope->Jval[nope->nnzj-1];
+          nope->Jvar[i] = nope->Jvar[nope->nnzj-1];
+          nope->Jfun[i] = nope->Jfun[nope->nnzj-1];
+          nope->nnzj--;
+          i--;
         }
-        nope->Jval[i] = nope->Jval[nope->nnzj-1];
-        nope->Jvar[i] = nope->Jvar[nope->nnzj-1];
-        nope->Jfun[i] = nope->Jfun[nope->nnzj-1];
-        nope->nnzj--;
-        i--;
       }
     }
   }
@@ -270,36 +302,141 @@ void findTrivialConstraints (Nope *nope) {
   for (i = 0; i < nope->nlinear; i++) {
     if (nope->is_trivial[i])
       continue;
-    if (nope->linear[nope->not_trivial_index[i]]) {
-      if (nnzj_per_line[i] == 0) {
-        nope->status = STATUS_PROCESSING;
-        nope->is_trivial[i] = true;
-      } else if (nnzj_per_line[i] == 1) {
-        nope->status = STATUS_PROCESSING;
-        nope->is_trivial[i] = true;
-        j = index_of_nnzj[i];
-        k = nope->Jvar[j]-1;
-        if (nope->equatn[i]) {
-          nope->x[k] = nope->linbndl[nope->Jfun[j]-1]/nope->Jval[j];
-          nope->is_fixed[k] = true;
-        } else {
-          // cl <= a x_j <= cu
-          // cl/a <= x_j <= cu/a
-          newlim = nope->linbndu[nope->Jfun[j]-1]/nope->Jval[j];
+    if (nnzj_per_line[i] == 0) {
+      nope->status = STATUS_PROCESSING;
+      nope->is_trivial[i] = true;
+#ifdef VERBOSE
+      printf("Removing empty constraint, line %d\n", i);
+#endif
+      return;
+    } else if (nnzj_per_line[i] == 1) {
+#ifdef VERBOSE
+      printf("Removing trivial constraint: line %d\n", i);
+#endif
+      nope->status = STATUS_PROCESSING;
+      nope->is_trivial[i] = true;
+      j = index_of_nnzj[i];
+      k = nope->Jvar[j]-1;
+      if (nope->equatn[i]) {
+        nope->x[k] = nope->linbndl[i]/nope->Jval[j];
+        nope->is_fixed[k] = true;
+      } else {
+        // cl <= a x_j <= cu
+        // cl/a <= x_j <= cu/a
+        double a = nope->Jval[j];
+        if (a > 0) {
+          newlim = nope->linbndu[i]/a;
           if (newlim < nope->bu[k])
             nope->bu[k] = newlim;
-          newlim = nope->linbndl[nope->Jfun[j]-1]/nope->Jval[j];
+          newlim = nope->linbndl[i]/a;
           if (newlim > nope->bl[k])
             nope->bl[k] = newlim;
+        } else {
+          newlim = nope->linbndl[i]/a;
+          if (newlim < nope->bu[k])
+            nope->bu[k] = newlim;
+          newlim = nope->linbndu[i]/a;
+          if (newlim > nope->bl[k])
+            nope->bl[k] = newlim;
+        }
 
-          if (nope->bu[k] - nope->bl[k] < PPEPS) {
-            nope->x[k] = (nope->bl[k] + nope->bu[k])/2;
-            nope->is_fixed[k] = true;
+        if (nope->bu[k] - nope->bl[k] < PPEPS) {
+          nope->x[k] = (nope->bl[k] + nope->bu[k])/2;
+          nope->is_fixed[k] = true;
+        }
+      }
+      // After removing <= J[i,j]*x[k] <= cu, the bounds are updated. If
+      // cl == cu, then they should become 0. Otherwise, x[k] doesn't have a
+      // value.
+      nope->linbndl[i] -= nope->Jval[j] * nope->x[k];
+      nope->linbndu[i] -= nope->Jval[j] * nope->x[k];
+      if (nope->equatn[i]) {
+        assert(nope->linbndl[i] == 0);
+        assert(nope->linbndu[i] == 0);
+      }
+      nope->Jval[j] = nope->Jval[nope->nnzj-1];
+      nope->Jvar[j] = nope->Jvar[nope->nnzj-1];
+      nope->Jfun[j] = nope->Jfun[nope->nnzj-1];
+      nope->nnzj--;
+
+      // Furthermore, for equalities, if xk appears on another line, that line
+      // should have the bounds updated too.
+      if (nope->equatn[i]) {
+        for (int p = 0; p < nope->nnzj; p++) {
+          if (nope->Jvar[p]-1 == k) {
+            int row = nope->Jfun[p]-1;
+            double val = nope->Jval[p];
+            nope->linbndl[row] -= val * nope->x[k];
+            nope->linbndu[row] -= val * nope->x[k];
+
+            nope->Jval[p] = nope->Jval[nope->nnzj-1];
+            nope->Jvar[p] = nope->Jvar[nope->nnzj-1];
+            nope->Jfun[p] = nope->Jfun[nope->nnzj-1];
+            nope->nnzj--;
+            p--;
           }
         }
       }
-    } else
-      break;
+      return;
+    }
+  }
+}
+
+
+// Debug tools
+
+void printLinearConstraints (Nope * nope) {
+  double cl, cu;
+  printf("%d lines, %d nonzeros\n", nope->nlinear, nope->nnzj);
+  for (int i = 0; i < nope->nlinear; i++) {
+    cl = nope->linbndl[i];
+    cu = nope->linbndu[i];
+    if (nope->equatn[i]) {
+      printf("         0 ");
+      for (int k = 0; k < nope->nnzj; k++) {
+        if (nope->Jfun[k] == i+1) {
+          if (nope->Jval[k] > 0)
+            printf("+ %3.1fx%d ", nope->Jval[k], nope->Jvar[k]);
+          else
+            printf("- %3.1fx%d ", -nope->Jval[k], nope->Jvar[k]);
+        }
+      }
+      printf(" = %3.1f\n", cl);
+    } else {
+      if (cl <= -1e20)
+        printf("-inf <= 0 ");
+      else
+        printf(" %+3.1f <= 0 ", cl);
+      for (int k = 0; k < nope->nnzj; k++) {
+        if (nope->Jfun[k] == i+1) {
+          if (nope->Jval[k] > 0)
+            printf("+ %3.1fx%d ", nope->Jval[k], nope->Jvar[k]);
+          else
+            printf("- %3.1fx%d ", -nope->Jval[k], nope->Jvar[k]);
+        }
+      }
+      if (cu >= 1e20)
+        printf(" <= inf\n");
+      else
+        printf(" <= %3.1f\n", cu);
+    }
+  }
+}
+
+void printBounds (Nope * nope) {
+  for (int i = 0; i < nope->nvar; i++) {
+    if (nope->is_fixed[i])
+      printf("         x%d == %3.1f\n", i+1, nope->x[i]);
+    else {
+      if ( (nope->bl[i] <= -1e20) && (nope->bu[i] >= 1e20) )
+        printf("         x%d  free\n", i+1);
+      else if (nope->bl[i] <= -1e20)
+        printf(" -inf <= x%d <= %3.1f\n", i+1, nope->bu[i]);
+      else if (nope->bu[i] >= 1e20)
+        printf(" %+3.1f <= x%d <= inf\n", nope->bl[i], i+1);
+      else
+        printf(" %+3.1f <= x%d <= %3.1f\n", nope->bl[i], i+1, nope->bu[i]);
+    }
   }
 }
 
@@ -321,3 +458,11 @@ void printJacobian (int ncon, int nvar, int nnzj, double *Jval, int *Jvar,
     printf("\n");
   }
 }
+
+void printArray (int n, double * x, const char * name) {
+  printf("%s = ", name);
+  for (int i = 0; i < n; i++)
+    printf("%8.1e ", x[i]);
+  printf("\n");
+}
+
