@@ -4,25 +4,25 @@
 
 /**
  * min f(x) = 0.5*(x_1^2 + x_2^2)
- * s.t    -1.2 <= 2x_1 + 3x_2 + 5x_3 <= 5.7
- *        -5.4 <= 4x_1 + 2x_2 + 4x_3 <= 4.5
- *        -0.5 <=  x_1        +  x_3 <= 2.0
+ * s.t    -1.2 <= 2x_1 + 3x_2 + 5x_3 + 1.0 <= 5.7
+ *        -5.4 <= 4x_1 + 2x_2 + 4x_3 + 1.0 <= 4.5
+ *        -0.5 <=  x_1        +  x_3 + 1.0 <= 2.0
  *            0.5 <= x_2 <= 0.5
  */
 
 #define UNUSED(x) (void)(x)
 
 Nope *nope;
-#include "nope_interface.h"
+#include "nope_interface.c"
 
 void core_cfn (int *st, const int *n, const int *m, const double *x, double *f, double *c) {
   UNUSED(st);
   UNUSED(n);
   UNUSED(m);
   *f = 0.5*(x[0]*x[0] + x[1]*x[1]);
-  c[0] = 2*x[0] + 3*x[1] + 5*x[2];
-  c[1] = 4*x[0] + 2*x[1] + 4*x[3];
-  c[2] = x[1] + x[3];
+  c[0] = 2*x[0] + 3*x[1] + 5*x[2] + 1.0;
+  c[1] = 4*x[0] + 2*x[1] + 4*x[2] + 1.0;
+  c[2] = x[0] + x[2] + 1.0;
 }
 
 void core_cofg (int *st, const int *n, const double *x, double *f, double *g, bool *grad) {
@@ -41,9 +41,9 @@ void core_ccfsg (int *st, const int *n, const int *m, const double *x, double *c
   UNUSED(n);
   UNUSED(m);
   UNUSED(jmax);
-  c[0] = 2*x[0] + 3*x[1] + 5*x[2];
-  c[1] = 4*x[0] + 2*x[1] + 4*x[3];
-  c[2] = x[1] + x[3];
+  c[0] = 2*x[0] + 3*x[1] + 5*x[2] + 1.0;
+  c[1] = 4*x[0] + 2*x[1] + 4*x[2] + 1.0;
+  c[2] = x[0] + x[2] + 1.0;
   if (!*grad)
     return;
   *nnzj = 8;
@@ -94,7 +94,7 @@ void core_csetup (int *st, const int *input, const int *out, const int *io_buffe
   UNUSED(l_order);
   UNUSED(v_order);
   for (i = 0; i < 3; i++) {
-    x[i] = 0;
+    x[i] = 1;
     bl[i] = -1e20;
     bu[i] = 1e20;
     equatn[i] = false;
@@ -138,12 +138,43 @@ int main () {
   bool equatn[m], linear[m];
   int amax;
   runConSetup(nope, &n, x, bl, bu, &m, y, cl, cu, equatn, linear, &amax);
-  assert(cl[0] == -2.7);
-  assert(cu[0] == 4.2);
-  assert(cl[1] == -6.4);
-  assert(cu[1] == 3.5);
+
+  // Test CCFSG
+  int st, Jfun[amax], Jvar[amax], nnzj;
+  bool grad = true;
+  double c[m], Jval[amax];
+  ccfsg(&st, &n, &m, x, c, &nnzj, &amax, Jval, Jvar, Jfun, &grad);
+
+  assert(c[0] == 9.5);
+  assert(c[1] == 10.0);
+  assert(c[2] == 3.0);
+
+  assert(cl[0] == -1.2);
+  assert(cu[0] == 5.7);
+  assert(cl[1] == -5.4);
+  assert(cu[1] == 4.5);
   assert(cl[2] == -0.5);
   assert(cu[2] == 2.0);
+
+  assert(nnzj == 6);
+  assert(Jval[0] == 2.0);
+  assert(Jval[1] == 1.0);
+  assert(Jval[2] == 5.0);
+  assert(Jval[3] == 4.0);
+  assert(Jval[4] == 1.0);
+  assert(Jval[5] == 4.0);
+  assert(Jvar[0] == 1);
+  assert(Jvar[1] == 2);
+  assert(Jvar[2] == 2);
+  assert(Jvar[3] == 1);
+  assert(Jvar[4] == 1);
+  assert(Jvar[5] == 2);
+  assert(Jfun[0] == 1);
+  assert(Jfun[1] == 3);
+  assert(Jfun[2] == 1);
+  assert(Jfun[3] == 2);
+  assert(Jfun[4] == 3);
+  assert(Jfun[5] == 2);
 
   destroyNope(nope);
 

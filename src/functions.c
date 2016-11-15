@@ -16,10 +16,12 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "nope.h"
+#include <assert.h>
+
+#define ASSERT_NOPE_OK assert( (nope != 0) && (nope->status == STATUS_OK) )
 
 void ppDIMEN (Nope *nope, int *nvar, int *ncon) {
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   *nvar = nope->nvar - nope->nfix;
   *ncon = nope->ncon - nope->ntrivial;
 }
@@ -28,27 +30,41 @@ void ppUNAMES (Nope *nope, int * status, const int * n, char * pname, char * vna
   char v[10*nope->nvar];
   UNUSED(n);
   UNUSED(vnames);
-  (*nope->origin_unames)(status, &nope->nvar, pname, v);
   // We, knowingly, decided to not pass the names of the variables
+  if (nope->ncon == 0)
+    (*nope->origin_unames)(status, &nope->nvar, pname, v);
+  else {
+    char c[10*nope->ncon];
+    (*nope->origin_cnames)(status, &nope->nvar, &nope->ncon, pname, v, c);
+  }
 }
 
 void ppUFN (Nope *nope, int * status, const int * n, const double * x, double * f) {
   int i = 0;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
-  for (i = 0; i < *n; i++)
+  ASSERT_NOPE_OK;
+  for (i = 0; i < *n; i++) {
     nope->x[nope->not_fixed_index[i]] = x[i];
-  (*nope->origin_ufn)(status, &nope->nvar, nope->x, f);
+  }
+  if (nope->ncon == 0)
+    (*nope->origin_ufn)(status, &nope->nvar, nope->x, f);
+  else {
+    (*nope->origin_cfn)(status, &nope->nvar, &nope->ncon, nope->x, f, nope->c);
+  }
 }
 
 void ppUOFG (Nope *nope, int * status, const int * n, const double * x, double *
     f, double * g, const _Bool * grad) {
   int i = 0;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   for (i = 0; i < *n; i++)
     nope->x[nope->not_fixed_index[i]] = x[i];
-  (*nope->origin_uofg)(status, &nope->nvar, nope->x, f, nope->g, grad);
+  if (nope->ncon == 0)
+    (*nope->origin_uofg)(status, &nope->nvar, nope->x, f, nope->g, grad);
+  else {
+    // CUTEst uses cofg with non-const grad, but uofg with const grad
+    bool grad_ = *grad;
+    (*nope->origin_cofg)(status, &nope->nvar, nope->x, f, nope->g, &grad_);
+  }
   if (*grad) {
     for (i = 0; i < *n; i++)
       g[i] = nope->g[nope->not_fixed_index[i]];
@@ -58,16 +74,22 @@ void ppUOFG (Nope *nope, int * status, const int * n, const double * x, double *
 void ppUHPROD (Nope *nope, int * status, const int * n, const _Bool * goth,
     const double * x, const double * vector, double * result) {
   int i = 0;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   for (i = 0; i < nope->nvar; i++)
     nope->workspace1[i] = 0.0;
   for (i = 0; i < *n; i++) {
     nope->x[nope->not_fixed_index[i]] = x[i];
     nope->workspace1[nope->not_fixed_index[i]] = vector[i];
   }
-  (*nope->origin_uhprod)(status, &nope->nvar, goth, nope->x,
-      nope->workspace1, nope->workspace2);
+  if (nope->ncon == 0) {
+    (*nope->origin_uhprod)(status, &nope->nvar, goth, nope->x,
+        nope->workspace1, nope->workspace2);
+  } else {
+    // Remember that trivial constraints are linear, so they don't appear on the
+    // Hessian
+    (*nope->origin_chprod)(status, &nope->nvar, &nope->ncon, goth,
+        nope->x, nope->y, nope->workspace1, nope->workspace2);
+  }
   for (i = 0; i < *n; i++)
     result[i] = nope->workspace2[nope->not_fixed_index[i]];
 }
@@ -86,12 +108,10 @@ void ppCNAMES (Nope *nope, int * status, const int * n, const int * m, char * pn
 void ppCFN (Nope *nope, int * status, const int * n, const int * m, const double * x,
     double * f, double * c) {
   int i = 0;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   for (i = 0; i < *n; i++)
     nope->x[nope->not_fixed_index[i]] = x[i];
-  (*nope->origin_cfn)(status, &nope->nvar, &nope->ncon, nope->x, f,
-      nope->c);
+  (*nope->origin_cfn)(status, &nope->nvar, &nope->ncon, nope->x, f, nope->c);
   for (i = 0; i < *m; i++)
     c[i] = nope->c[nope->not_trivial_index[i]];
 }
@@ -99,8 +119,7 @@ void ppCFN (Nope *nope, int * status, const int * n, const int * m, const double
 void ppCOFG (Nope *nope, int * status, const int * n, const double * x, double *
     f, double * g, _Bool * grad) {
   int i = 0;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   for (i = 0; i < *n; i++)
     nope->x[nope->not_fixed_index[i]] = x[i];
   (*nope->origin_cofg)(status, &nope->nvar, nope->x, f, nope->g, grad);
@@ -113,14 +132,15 @@ void ppCOFG (Nope *nope, int * status, const int * n, const double * x, double *
 void ppCHPROD (Nope *nope, int * status, const int * n, const int * m, const _Bool *
     goth, const double * x, const double * y, double * vector, double * result) {
   int i = 0;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   for (i = 0; i < nope->nvar; i++)
     nope->workspace1[i] = 0.0;
   for (i = 0; i < *n; i++) {
     nope->x[nope->not_fixed_index[i]] = x[i];
     nope->workspace1[nope->not_fixed_index[i]] = vector[i];
   }
+  // Remember that trivial constraints are linear, so they don't appear on the
+  // Hessian
   for (i = 0; i < *m; i++) {
     nope->y[nope->not_trivial_index[i]] = y[i];
   }
@@ -134,8 +154,7 @@ void ppCCFSG (Nope *nope, int * status, const int * n, const int * m, const
     double * x, double * c, int * nnzj, const int * lj, double * Jval, int *
     Jvar, int * Jfun, const _Bool * grad) {
   int i, k;
-  if (nope == 0 || nope->status != STATUS_OK)
-    return;
+  ASSERT_NOPE_OK;
   for (i = 0; i < *n; i++)
     nope->x[nope->not_fixed_index[i]] = x[i];
   (*nope->origin_ccfsg)(status, &nope->nvar, &nope->ncon, nope->x, nope->c,
@@ -148,11 +167,13 @@ void ppCCFSG (Nope *nope, int * status, const int * n, const int * m, const
   // columns
   for (k = 0; k < *nnzj; k++) {
     if (nope->is_fixed[Jvar[k]-1] || nope->is_trivial[Jfun[k]-1]) {
-      Jval[k] = Jval[*nnzj-1];
-      Jvar[k] = Jvar[*nnzj-1];
-      Jfun[k] = Jfun[*nnzj-1];
       (*nnzj)--;
-      k--;
+      if (k < *nnzj) {
+        Jval[k] = Jval[*nnzj];
+        Jvar[k] = Jvar[*nnzj];
+        Jfun[k] = Jfun[*nnzj];
+        k--;
+      }
     }
   }
   // Now we reorder the columns, reducing by one for each fixed

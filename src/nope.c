@@ -72,7 +72,7 @@ int runNope (Nope *nope) {
   int funit = 42, fout = 6, io_buffer = 11;
   int efirst = 0, lfirst = 1, nvfirst = 1;
   _Bool grad = true;
-  int i, j;
+  int i;
   int knotfixed = 0, knottrivial = 0;
 
   if (nope == 0 || nope->status != STATUS_READY) {
@@ -128,6 +128,8 @@ int runNope (Nope *nope) {
     nope->nlinear++;
   }
 
+  // TODO: Decrease jmax considering fixed variables and trivial constraints.
+  // CCFSG would have to be changed as well.
   if (nope->ncon > 0) {
     (*nope->origin_cdimsj)(&status, &nope->jmax);
     nope->Jval = (double *) malloc(nope->jmax*sizeof(double));
@@ -145,15 +147,6 @@ int runNope (Nope *nope) {
     for (i = 0; i < nope->nlinear; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
       nope->linbndu[i] = nope->cu[i] - nope->c[i];
-    }
-    for (i = 0; i < nope->nnzj; i++) {
-      j = nope->Jfun[i]-1;
-      if (nope->linear[j]) {
-        nope->linbndl[j] += nope->Jval[i]*nope->x[nope->Jvar[i]-1];
-        nope->linbndu[j] += nope->Jval[i]*nope->x[nope->Jvar[i]-1];
-      } else {
-        break;
-      }
     }
   }
 /*  printJacobian(nope->ncon, nope->nvar, nope->nnzj, nope->Jval, nope->Jvar,*/
@@ -180,6 +173,9 @@ int runNope (Nope *nope) {
     if (nope->nlinear > 0)
       findTrivialConstraints(nope);
   }
+
+  // We have cl <= A*x + b <= cu, where x = (xfix, z), A = [Afix, Az]
+  // Then cl - Afix*xfix <= Az*z + b <= cu - Afix*xfix
 
   nope->nfix = 0;
   knotfixed = 0;
@@ -232,8 +228,8 @@ void runConSetup (Nope *nope, int *nvar, double *x, double
     j = nope->not_trivial_index[i];
     y[i] = nope->y[j];
     if (nope->linear[j]) {
-      cl[i] = nope->linbndl[j];
-      cu[i] = nope->linbndu[j];
+      cl[i] = nope->cl[j];
+      cu[i] = nope->cu[j];
     } else {
       cl[i] = nope->cl[j];
       cu[i] = nope->cu[j];
@@ -318,8 +314,13 @@ void findTrivialConstraints (Nope *nope) {
       j = index_of_nnzj[i];
       k = nope->Jvar[j]-1;
       if (nope->equatn[i]) {
-        nope->x[k] = nope->linbndl[i]/nope->Jval[j];
-        nope->is_fixed[k] = true;
+        double v = nope->linbndl[i]/nope->Jval[j];
+        if (nope->is_fixed[k])
+          assert(nope->x[k] == v);
+        else {
+          nope->x[k] = nope->linbndl[i]/nope->Jval[j];
+          nope->is_fixed[k] = true;
+        }
       } else {
         // cl <= a x_j <= cu
         // cl/a <= x_j <= cu/a

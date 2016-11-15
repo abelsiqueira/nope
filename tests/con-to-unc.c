@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "nope.h"
+#include <assert.h>
 
 /**
  * min f(x) = 0.5*dot(x,x)
@@ -13,7 +14,7 @@
 int nvar = 10;
 
 Nope *nope;
-#include "nope_interface.h"
+#include "nope_interface.c"
 
 void core_cfn (int *st, const int *n, const int *m, const double *x, double *f, double *c) {
   int i;
@@ -21,7 +22,7 @@ void core_cfn (int *st, const int *n, const int *m, const double *x, double *f, 
   UNUSED(m);
   *f = 0.0;
   for (i = 0; i < *n; i++)
-    *f = x[i]*x[i];
+    *f += x[i]*x[i];
   *f /= 2;
   c[0] = x[0] - x[1];
 }
@@ -31,7 +32,7 @@ void core_cofg (int *st, const int *n, const double *x, double *f, double *g, bo
   UNUSED(st);
   *f = 0.0;
   for (i = 0; i < *n; i++)
-    *f = x[i]*x[i];
+    *f += x[i]*x[i];
   *f /= 2;
   if (*grad) {
     for (i = 0; i < *n; i++)
@@ -77,7 +78,7 @@ void core_csetup (int *st, const int *input, const int *out, const int *io_buffe
   UNUSED(l_order);
   UNUSED(v_order);
   for (i = 0; i < *n; i++) {
-    x[i] = 0;
+    x[i] = 2;
     bl[i] = -1e20;
     bu[i] = 1e20;
   }
@@ -104,7 +105,27 @@ int main () {
       core_cofg, 0, core_ccfsg, core_cdimsj);
   runNope(nope);
 
+  assert(nope->x[0] == -1.0);
+  assert(nope->x[1] == -1.0);
+
   ppDIMEN(nope, &n, &m);
+  double x[n], bl[n], bu[n];
+
+  runUncSetup(nope, &n, x, bl, bu);
+  for (int i = 0; i < n; i++)
+    assert(x[i] == 2.0);
+
+  // Testing if ufn works
+  int st = 0;
+  double f = 0;
+  ufn(&st, &n, x, &f);
+  assert(f == 1.0 + 2*n);
+  // Testing if uofg works
+  double g[n];
+  bool grad = true;
+  uofg(&st, &n, x, &f, g, &grad);
+  for (int i = 0; i < n; i++)
+    assert(g[i] == 2.0);
 
   destroyNope(nope);
 
