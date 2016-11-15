@@ -144,9 +144,21 @@ int runNope (Nope *nope) {
         nope->x, nope->c, &nope->nnzj, &nope->jmax, nope->Jval,
         nope->Jvar, nope->Jfun, &grad);
 
+    // We have cl <= A*x + b <= cu
+    // c(x) = A*x + b => b = c(x) - A*x;
+    // => cl - b = cl - c(x) + A*x
+    // => cu - b = cu - c(x) + A*x
     for (i = 0; i < nope->nlinear; i++) {
       nope->linbndl[i] = nope->cl[i] - nope->c[i];
       nope->linbndu[i] = nope->cu[i] - nope->c[i];
+    }
+    for (i = 0; i < nope->nnzj; i++) {
+      int j = nope->Jfun[i] - 1;
+      if (nope->linear[j]) {
+        double v = nope->Jval[i] * nope->x[nope->Jvar[i]-1];
+        nope->linbndl[j] += v;
+        nope->linbndu[j] += v;
+      }
     }
   }
 /*  printJacobian(nope->ncon, nope->nvar, nope->nnzj, nope->Jval, nope->Jvar,*/
@@ -173,9 +185,6 @@ int runNope (Nope *nope) {
     if (nope->nlinear > 0)
       findTrivialConstraints(nope);
   }
-
-  // We have cl <= A*x + b <= cu, where x = (xfix, z), A = [Afix, Az]
-  // Then cl - Afix*xfix <= Az*z + b <= cu - Afix*xfix
 
   nope->nfix = 0;
   knotfixed = 0;
